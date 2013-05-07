@@ -1,5 +1,9 @@
+#!/usr/bin/env python2.7
+# Creadted by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
+# Distributed under the MIT/X11 software license. See the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 # This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.0)
-# See https://bitmessage.org/wiki/API_Reference for API documentation
 
 import xmlrpclib
 import json
