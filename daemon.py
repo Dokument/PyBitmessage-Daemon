@@ -44,14 +44,50 @@ def apiData():
         apiConfigured = ''
     if apiConfigured == '' or apiConfigured == False :
         print 'keys.dat not properly configured!'
-        sys.exit()
+        uInput = raw_input("Would you like to automatically do this now?(y/n):")
+
+        if uInput == "y": #User said yes, initalize the api by writing these values to the keys.dat file
+            config.set('bitmessagesettings','apienabled','true')
+            config.set('bitmessagesettings', 'apiport', '8444')
+            config.set('bitmessagesettings', 'apiinterface', '127.0.0.1')
+            config.set('bitmessagesettings', 'apiusername', 'apiUser')
+            config.set('bitmessagesettings', 'apipassword', 'apiDaemon')
+            with open(lookupAppdataFolder() + 'keys.dat', 'wb') as configfile:
+                config.write(configfile)
+            
+            print 'Finished configuring the keys.dat file with API information.'
+            print ' '
+            print '***********************************************************'
+            print 'WARNING: If bitmessage is running, you must restart it now.'
+            print '***********************************************************'
+            print ' '
+
+            #Now that some default data has be written we can read from the file to get the api information
+            apiEnabled = config.getboolean('bitmessagesettings','apienabled')
+            apiPort = config.getint('bitmessagesettings', 'apiport')
+            apiInterface = config.get('bitmessagesettings', 'apiinterface')
+            apiUsername = config.get('bitmessagesettings', 'apiusername')
+            apiPassword = config.get('bitmessagesettings', 'apipassword')
+                
+            print 'API data successfully imported.'
+            print ' '
+            return "http://" + apiUsername + ":" + apiPassword + "@" + apiInterface+ ":" + str(apiPort) + "/" #Build the api credentials
+            
+        elif uInput == "n":
+            print 'Please refer to the bitmessag wiki on how to setup the API'
+            sys.exit()
+        else:
+            print 'invalid entry'
+            sys.exit()
     else:
         apiEnabled = config.getboolean('bitmessagesettings','apienabled')
-        apiInterface = config.get('bitmessagesettings', 'apiinterface')
         apiPort = config.getint('bitmessagesettings', 'apiport')
+        apiInterface = config.get('bitmessagesettings', 'apiinterface')
         apiUsername = config.get('bitmessagesettings', 'apiusername')
         apiPassword = config.get('bitmessagesettings', 'apipassword')
 
+        print 'API data successfully imported.'
+        print ' '
         return "http://" + apiUsername + ":" + apiPassword + "@" + apiInterface+ ":" + str(apiPort) + "/" #Build the api credentials
 
 #End API lookup data
@@ -188,7 +224,7 @@ def delMsg(msgNum): #Deletes a specified message from the inbox
 def UI(usrInput): #Main user menu
     if usrInput == "help" or usrInput == "h":
         print ' '
-  print 'Possible Commands:'
+	print 'Possible Commands:'
 	print '-----------------------------------'
 	print 'help or h - This help file.'
 	print 'apiTest - Tests the API'
@@ -307,8 +343,10 @@ def UI(usrInput): #Main user menu
                 main()
             else:
                 print 'invalid entry'
+                main()
         else:
             print 'invalid entry'
+            main()
         
     elif usrInput == "delete": #will delete a message from the system, not reflected on the UI.
         msgNum = int(raw_input("Message number to delete:"))
