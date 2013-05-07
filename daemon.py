@@ -15,8 +15,7 @@ import os
 import ConfigParser
 
 api = ''
-
-firstRun = True
+firstRun = True #True if the program is starting up
 
 #Begin API lookup data
 def lookupAppdataFolder():
@@ -45,6 +44,7 @@ def apiData():
         apiConfigured = ''
     if apiConfigured == '' or apiConfigured == False :
         print 'keys.dat not properly configured!'
+        sys.exit()
     else:
         apiEnabled = config.getboolean('bitmessagesettings','apienabled')
         apiInterface = config.get('bitmessagesettings', 'apiinterface')
