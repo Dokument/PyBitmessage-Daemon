@@ -3,7 +3,7 @@
 # Distributed under the MIT/X11 software license. See the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-# This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.0)
+# This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.1)
 
 import xmlrpclib
 import json
@@ -25,7 +25,7 @@ def lookupAppdataFolder():
         if "HOME" in environ:
             dataFolder = path.join(os.environ["HOME"], "Library/Application support/", APPNAME) + '/'
         else:
-            print 'Could not find home folder, please report this message and your OS X version to the BitMessage Github.'
+            print 'Could not find home folder, please report this message and your OS X version to the Daemon Github.'
             sys.exit()
 
     elif 'win32' in sys.platform or 'win64' in sys.platform:
@@ -36,13 +36,31 @@ def lookupAppdataFolder():
 
 def apiData():
     config = ConfigParser.SafeConfigParser()
-    config.read(lookupAppdataFolder() + 'keys.dat')
+    config.read('keys.dat') #First try to load the config file (the keys.dat file) from the program directory
 
     try:
-        apiConfigured = config.get('bitmessagesettings','apienabled')
+        config.get('bitmessagesettings','settingsversion')
+        appDataFolder = ''
     except:
-        apiConfigured = ''
-    if apiConfigured == '' or apiConfigured == False :
+        #Could not load the keys.dat file in the program directory. Perhaps it is in the appdata directory.
+        appDataFolder = lookupAppdataFolder()
+        config = ConfigParser.SafeConfigParser()
+        config.read(appDataFolder + 'keys.dat')
+
+        try:
+            config.get('bitmessagesettings','settingsversion')
+        except:
+            #Was not there either, something is wrong.
+            print 'There was a problem trying to access the PyBitmessage keys.dat file'
+            print config
+            sys.exit()
+
+    try:
+        apiConfigured = config.getboolean('bitmessagesettings','apienabled') #Look for 'apienabled'
+    except:
+        apiConfigured = False #If not found, set to false since it still needs to be configured
+
+    if (apiConfigured == False):#If the apienabled == false or is not present in the keys.dat file, notify the user
         print 'keys.dat not properly configured!'
         uInput = raw_input("Would you like to automatically do this now?(y/n):")
 
@@ -52,7 +70,7 @@ def apiData():
             config.set('bitmessagesettings', 'apiinterface', '127.0.0.1')
             config.set('bitmessagesettings', 'apiusername', 'apiUser')
             config.set('bitmessagesettings', 'apipassword', 'apiDaemon')
-            with open(lookupAppdataFolder() + 'keys.dat', 'wb') as configfile:
+            with open(appDataFolder + 'keys.dat', 'wb') as configfile:
                 config.write(configfile)
             
             print 'Finished configuring the keys.dat file with API information.'
@@ -79,16 +97,17 @@ def apiData():
         else:
             print 'invalid entry'
             sys.exit()
-    else:
-        apiEnabled = config.getboolean('bitmessagesettings','apienabled')
-        apiPort = config.getint('bitmessagesettings', 'apiport')
-        apiInterface = config.get('bitmessagesettings', 'apiinterface')
-        apiUsername = config.get('bitmessagesettings', 'apiusername')
-        apiPassword = config.get('bitmessagesettings', 'apipassword')
 
-        print 'API data successfully imported.'
-        print ' '
-        return "http://" + apiUsername + ":" + apiPassword + "@" + apiInterface+ ":" + str(apiPort) + "/" #Build the api credentials
+    #keys.dat file is found and appropriately configured, allow information retrieval
+    apiEnabled = config.getboolean('bitmessagesettings','apienabled')
+    apiPort = config.getint('bitmessagesettings', 'apiport')
+    apiInterface = config.get('bitmessagesettings', 'apiinterface')
+    apiUsername = config.get('bitmessagesettings', 'apiusername')
+    apiPassword = config.get('bitmessagesettings', 'apipassword')
+
+    print 'API data successfully imported.'
+    print ' '
+    return "http://" + apiUsername + ":" + apiPassword + "@" + apiInterface+ ":" + str(apiPort) + "/" #Build the api credentials
 
 #End API lookup data
 
