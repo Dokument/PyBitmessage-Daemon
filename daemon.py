@@ -278,41 +278,40 @@ def sendMsg(toAddress, fromAddress, subject, message): #With no arguments sent, 
         numAddresses = len(jsonAddresses['addresses']) #Number of addresses
         
         if (numAddresses > 1): #Ask what address to send from if multiple addresses
-            labelOrAddress = 'label'
+            found = False
             while True:
                 print ' '
                 fromAddress = raw_input("Enter an Address or Address Label to send from:") # todo: add ability to type in label instead of full address
 
-                if (labelOrAddress == 'label'):
-                    for addNum in range (0, numAddresses): #processes all of the addresses
-                        label = jsonAddresses['addresses'][addNum]['label']
-                        address = jsonAddresses['addresses'][addNum]['address']
-                        #stream = jsonAddresses['addresses'][addNum]['stream']
-                        #enabled = jsonAddresses['addresses'][addNum]['enabled']
-                        if (fromAddress == label): #address entered was a label and is found
-                            fromAddress = address
-                            labelOrAddress = 'label'
-                            break
-                        else:
-                            labelOrAddress = 'address'
-                    
-                if (labelOrAddress == 'address'):
-                    if (decodeAddress(fromAddress)== False):
+                for addNum in range (0, numAddresses): #processes all of the addresses
+                    label = jsonAddresses['addresses'][addNum]['label']
+                    address = jsonAddresses['addresses'][addNum]['address']
+                    #stream = jsonAddresses['addresses'][addNum]['stream']
+                    #enabled = jsonAddresses['addresses'][addNum]['enabled']
+                    if (fromAddress == label): #address entered was a label and is found
+                        fromAddress = address
+                        found = True
+                        break
+                
+                if (found == False):
+                    if(decodeAddress(fromAddress)== False):
                         print 'Invalid Address. Please try again.'
-                    else: #Address was valid so use it
+                    
+                    else:
                         for addNum in range (0, numAddresses): #processes all of the addresses
                             #label = jsonAddresses['addresses'][addNum]['label']
                             address = jsonAddresses['addresses'][addNum]['address']
                             #stream = jsonAddresses['addresses'][addNum]['stream']
                             #enabled = jsonAddresses['addresses'][addNum]['enabled']
                             if (fromAddress == address): #address entered was a found in our addressbook.
-                                labelOrAddress = 'address'
+                                found = True
                                 break
-                            else:
-                                print 'The address entered is not one of yours. Please try again.'
-                                break
-                else:
-                    break #Address was the label :)
+                            
+                        if (found == False):
+                            print 'The address entered is not one of yours. Please try again.'
+                
+                if (found == True):
+                    break #Address was found
         
         else: #Only one address in address book
             print 'Using the only address in the addressbook to send from.'
@@ -336,41 +335,40 @@ def sendBrd(fromAddress, subject, message): #sends a broadcast
         numAddresses = len(jsonAddresses['addresses']) #Number of addresses
         
         if (numAddresses > 1): #Ask what address to send from if multiple addresses
-            labelOrAddress = 'label'
+            found = False
             while True:
                 print ' '
                 fromAddress = raw_input("Enter an Address or Address Label to send from:") # todo: add ability to type in label instead of full address
 
-                if (labelOrAddress == 'label'):
-                    for addNum in range (0, numAddresses): #processes all of the addresses
-                        label = jsonAddresses['addresses'][addNum]['label']
-                        address = jsonAddresses['addresses'][addNum]['address']
-                        #stream = jsonAddresses['addresses'][addNum]['stream']
-                        #enabled = jsonAddresses['addresses'][addNum]['enabled']
-                        if (fromAddress == label): #address entered was a label and is found
-                            fromAddress = address
-                            labelOrAddress = 'label'
-                            break
-                        else:
-                            labelOrAddress = 'address'
-                    
-                if (labelOrAddress == 'address'):
-                    if (decodeAddress(fromAddress)== False):
+                for addNum in range (0, numAddresses): #processes all of the addresses
+                    label = jsonAddresses['addresses'][addNum]['label']
+                    address = jsonAddresses['addresses'][addNum]['address']
+                    #stream = jsonAddresses['addresses'][addNum]['stream']
+                    #enabled = jsonAddresses['addresses'][addNum]['enabled']
+                    if (fromAddress == label): #address entered was a label and is found
+                        fromAddress = address
+                        found = True
+                        break
+                
+                if (found == False):
+                    if(decodeAddress(fromAddress)== False):
                         print 'Invalid Address. Please try again.'
-                    else: #Address was valid so use it
+                    
+                    else:
                         for addNum in range (0, numAddresses): #processes all of the addresses
                             #label = jsonAddresses['addresses'][addNum]['label']
                             address = jsonAddresses['addresses'][addNum]['address']
                             #stream = jsonAddresses['addresses'][addNum]['stream']
                             #enabled = jsonAddresses['addresses'][addNum]['enabled']
                             if (fromAddress == address): #address entered was a found in our addressbook.
-                                labelOrAddress = 'address'
+                                found = True
                                 break
-                            else:
-                                print 'The address entered is not one of yours. Please try again.'
-                                break
-                else:
-                    break #Address was the label :)
+                            
+                        if (found == False):
+                            print 'The address entered is not one of yours. Please try again.'
+                
+                if (found == True):
+                    break #Address was found
         
         else: #Only one address in address book
             print 'Using the only address in the addressbook to send from.'
