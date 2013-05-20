@@ -5,6 +5,7 @@ PyBitmessage Daemon Client allows users to interact with PyBitmessage through th
 
 It allows you to interact with PyBitmessage via the api which unforatunately (as of PyBitmessage version 0.3.0) is limited.
 
+Please make sure that you are using Python 2.7.x
 
 Setup
 =====
