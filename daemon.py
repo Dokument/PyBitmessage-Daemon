@@ -1,9 +1,8 @@
-#!/usr/bin/env python2.7
-# Creadted by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
-# Distributed under the MIT/X11 software license. See the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+#!/usr/bin/env python2.7.x
+# Created by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
+# Distributed under the MIT/X11 software license. See http://www.opensource.org/licenses/mit-license.php.
 
-# This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.2)
+# This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.5)
 
 
 import ConfigParser
@@ -19,6 +18,23 @@ import os
 api = ''
 keysPath = 'keys.dat'
 usrPrompt = 0 #0 = First Start, 1 = prompt, 2 = no prompt if the program is starting up
+
+def restartBmNotify(): #Prompts the user to restart Bitmessage. 
+    print ' '
+    print '***********************************************************'
+    print 'WARNING: If Bitmessage is running, you must restart it now.'
+    print '***********************************************************'
+    print ' '
+
+def safeConfigGetBoolean(section,field):
+    global keysPath
+    config = ConfigParser.SafeConfigParser()
+    config.read(keysPath)
+    
+    try:
+        return config.getboolean(section,field)
+    except:
+        return False
 
 #Begin keys.dat interactions
 def lookupAppdataFolder(): #gets the appropriate folders for the .dat files depending on the OS. Taken from bitmessagemain.py
@@ -51,13 +67,9 @@ def apiInit(apiEnabled):
             with open(keysPath, 'wb') as configfile:
                 config.write(configfile)
                 
-            apiEnabled = config.getboolean('bitmessagesettings','apienabled') # Retrieves the value from the file.
             print 'Done'
-            print ' '
-            print '***********************************************************'
-            print 'WARNING: If bitmessage is running, you must restart it now.'
-            print '***********************************************************'
-            print ' '
+            restartBmNotify()
+            return True
             
         elif uInput == "n":
             print ' '
@@ -68,11 +80,15 @@ def apiInit(apiEnabled):
             print ' '
             usrPrompt = 1
             main()
+            
         else:
             print 'Invalid entry'
             usrPrompt = 1
             main()
-
+    elif (apiEnabled == True): #API correctly setup
+        #Everything is as it should be
+        return True
+    
     else: #API information was not present.
         print 'keys.dat not properly configured!'
         uInput = raw_input("Would you like to do this now?(y/n):")
@@ -81,10 +97,11 @@ def apiInit(apiEnabled):
             print '-----------------------------------'
             apiUsr = raw_input("API Username:")
             apiPwd = raw_input("API Password:")
+            apiPort = raw_input("API Port:")
             print '-----------------------------------'
                 
             config.set('bitmessagesettings','apienabled','true')
-            config.set('bitmessagesettings', 'apiport', '8444')
+            config.set('bitmessagesettings', 'apiport', apiPort)
             config.set('bitmessagesettings', 'apiinterface', '127.0.0.1')
             config.set('bitmessagesettings', 'apiusername', apiUsr)
             config.set('bitmessagesettings', 'apipassword', apiPwd)
@@ -92,18 +109,18 @@ def apiInit(apiEnabled):
                 config.write(configfile)
             
             print 'Finished configuring the keys.dat file with API information.'
-            print ' '
-            print '***********************************************************'
-            print 'WARNING: If bitmessage is running, you must restart it now.'
-            print '***********************************************************'
-            print ' '
-            
+            restartBmNotify()
+            return True
+        
         elif uInput == "n":
             print ' '
             print '***********************************************************'
             print 'Please refer to the Bitmessage Wiki on how to setup the API.'
             print '***********************************************************'
             print ' '
+            usrPrompt = 1
+            main()
+        elif uInput == "exit":
             usrPrompt = 1
             main()
         else:
@@ -117,6 +134,7 @@ def apiData():
     
     config = ConfigParser.SafeConfigParser()
     keysPath = 'keys.dat'
+    
     config.read(keysPath) #First try to load the config file (the keys.dat file) from the program directory
 
     try:
@@ -139,30 +157,30 @@ def apiData():
             print 'Make sure that daemon is in the same directory as Bitmessage.'
             print '******************************************************************'
             print ' '
-            print config
-            print ' '
             usrPrompt = 1
             main()
 
-    try:
-        apiConfigured = config.getboolean('bitmessagesettings','apienabled') #Look for 'apienabled'
-        apiEnabled = apiConfigured
+    try: #checks to make sure that everyting is configured correctly. Excluding apiEnabled, it is checked after
+        config.get('bitmessagesettings', 'apiport')
+        config.get('bitmessagesettings', 'apiinterface')
+        config.get('bitmessagesettings', 'apiusername')
+        config.get('bitmessagesettings', 'apipassword')
     except:
-        apiConfigured = False #If not found, set to false since it still needs to be configured
-
-    if (apiConfigured == False):#If the apienabled == false or is not present in the keys.dat file, notify the user and set it up
-        apiInit(apiEnabled) #Initalize the keys.dat file with API information
+        apiInit("") #Initalize the keys.dat file with API information
 
     #keys.dat file was found or appropriately configured, allow information retrieval
-    apiEnabled = config.getboolean('bitmessagesettings','apienabled')
-    apiPort = config.getint('bitmessagesettings', 'apiport')
+    apiEnabled = apiInit(safeConfigGetBoolean('bitmessagesettings','apienabled')) #if false it will prompt the user, if true it will return true
+
+    config.read(keysPath)#read again since changes have been made
+    apiPort = int(config.get('bitmessagesettings', 'apiport'))
     apiInterface = config.get('bitmessagesettings', 'apiinterface')
     apiUsername = config.get('bitmessagesettings', 'apiusername')
     apiPassword = config.get('bitmessagesettings', 'apipassword')
-            
+    
     print 'API data successfully imported.'
     print ' '
     return "http://" + apiUsername + ":" + apiPassword + "@" + apiInterface+ ":" + str(apiPort) + "/" #Build the api credentials
+#End keys.dat interactions
 
 def apiTest(): #Tests the API connection to bitmessage. Returns true if it is connected.
     if (api.add(2,3) == 5):
@@ -170,7 +188,194 @@ def apiTest(): #Tests the API connection to bitmessage. Returns true if it is co
     else:
         return False
 
-#End keys.dat interactions
+def bmSettings(): #Allows the viewing and modification of keys.dat settings. 
+    global keysPath
+    global usrPrompt
+    config = ConfigParser.SafeConfigParser()
+    keysPath = 'keys.dat'
+    
+    config.read(keysPath)#Read the keys.dat
+
+    port = config.get('bitmessagesettings', 'port')
+    startonlogon = config.get('bitmessagesettings', 'startonlogon')
+    minimizetotray = config.get('bitmessagesettings', 'minimizetotray')
+    showtraynotifications = config.get('bitmessagesettings', 'showtraynotifications')
+    startintray = config.get('bitmessagesettings', 'startintray')
+    defaultnoncetrialsperbyte = config.get('bitmessagesettings', 'defaultnoncetrialsperbyte')
+    defaultpayloadlengthextrabytes = config.get('bitmessagesettings', 'defaultpayloadlengthextrabytes')
+
+    socksproxytype = config.get('bitmessagesettings', 'socksproxytype')
+    sockshostname = config.get('bitmessagesettings', 'sockshostname')
+    socksport = config.get('bitmessagesettings', 'socksport')
+    socksauthentication = config.get('bitmessagesettings', 'socksauthentication')
+    socksusername = config.get('bitmessagesettings', 'socksusername')
+    sockspassword = config.get('bitmessagesettings', 'sockspassword')
+
+
+    print ' '
+    print '-----------------------------------'
+    print 'Current Bitmessage Settings:'
+    print 'port = ' + port
+    print 'startonlogon = ' + startonlogon
+    print 'minimizetotray = ' + minimizetotray
+    print 'showtraynotifications = ' + showtraynotifications
+    print 'startintray = ' + startintray
+    print 'defaultnoncetrialsperbyte = ' + defaultnoncetrialsperbyte
+    print 'defaultpayloadlengthextrabytes = ' + defaultpayloadlengthextrabytes
+    print ' '
+    print 'Current Connection Settings:'
+    print 'socksproxytype = ' + socksproxytype
+    print 'sockshostname = ' + sockshostname
+    print 'socksport = ' + socksport
+    print 'socksauthentication = ' + socksauthentication
+    print 'socksusername = ' + socksusername
+    print 'sockspassword = ' + sockspassword
+    print '-----------------------------------'
+    print ' '
+
+    uInput = raw_input("Would you like to modify any of these settings?(y/n):")
+    
+    if uInput == "y":
+        while True: #loops if they mistype the setting name, they can exit the loop with 'exit'
+            invalidInput = False
+            uInput = raw_input("What setting would you like to modify? :")
+            print ' '
+
+            if uInput == "port":
+                print 'Current port number: ' + port
+                uInput = raw_input("New port:")
+                if uInput == 'exit':
+                    usrPrompt = 1
+                    main()
+                else:
+                    config.set('bitmessagesettings', 'port', str(uInput))
+            elif uInput == "startonlogon":
+                print 'Current status: ' + startonlogon
+                uInput = raw_input("New status:")
+                if uInput == 'exit':
+                    usrPrompt = 1
+                    main()
+                else:
+                    config.set('bitmessagesettings', 'startonlogon', str(uInput))
+            elif uInput == "minimizetotray":
+                print 'Current status: ' + minimizetotray
+                uInput = raw_input("New status:")
+                if uInput == 'exit':
+                    usrPrompt = 1
+                    main()
+                else:
+                    config.set('bitmessagesettings', 'minimizetotray', str(uInput))
+            elif uInput == "showtraynotifications":
+                print 'Current status: ' + showtraynotifications
+                uInput = raw_input("New status:")
+                if uInput == 'exit':
+                    usrPrompt = 1
+                    main()
+                else:
+                    config.set('bitmessagesettings', 'showtraynotifications', str(uInput))
+            elif uInput == "startintray":
+                print 'Current status: ' + startintray
+                uInput = raw_input("New status:")
+                if uInput == 'exit':
+                    usrPrompt = 1
+                    main()
+                else:
+                    config.set('bitmessagesettings', 'startintray', str(uInput))
+            elif uInput == "defaultnoncetrialsperbyte":
+                print 'Current default nonce trials per byte: ' + defaultnoncetrialsperbyte
+                uInput = raw_input("New defaultnoncetrialsperbyte:")
+                if uInput == 'exit':
+                    usrPrompt = 1
+                    main()
+                else:
+                    config.set('bitmessagesettings', 'defaultnoncetrialsperbyte', str(uInput))
+            elif uInput == "defaultpayloadlengthextrabytes":
+                print 'Current default payload length extra bytes: ' + defaultpayloadlengthextrabytes
+                uInput = raw_input("New defaultpayloadlengthextrabytes:")
+                if uInput == 'exit':
+                    usrPrompt = 1
+                    main()
+                else:
+                    config.set('bitmessagesettings', 'defaultpayloadlengthextrabytes', str(uInput))
+            elif uInput == "socksproxytype":
+                print 'Current socks proxy type: ' + socksproxytype
+                print "Possibilities: 'none', 'SOCKS4a', 'SOCKS5'."
+                uInput = raw_input("New socksproxytype:")
+                if uInput == 'exit':
+                    usrPrompt = 1
+                    main()
+                else:
+                    config.set('bitmessagesettings', 'socksproxytype', str(uInput))
+            elif uInput == "sockshostname":
+                print 'Current socks host name: ' + sockshostname
+                uInput = raw_input("New sockshostname:")
+                if uInput == 'exit':
+                    usrPrompt = 1
+                    main()
+                else:
+                    config.set('bitmessagesettings', 'sockshostname', str(uInput))
+            elif uInput == "socksport":
+                print 'Current socks port number: ' + socksport
+                uInput = raw_input("New socksport:")
+                if uInput == 'exit':
+                    usrPrompt = 1
+                    main()
+                else:
+                    config.set('bitmessagesettings', 'socksport', str(uInput))
+            elif uInput == "socksauthentication":
+                print 'Current status: ' + socksauthentication
+                uInput = raw_input("New status:")
+                if uInput == 'exit':
+                    usrPrompt = 1
+                    main()
+                else:
+                    config.set('bitmessagesettings', 'socksauthentication', str(uInput))
+            elif uInput == "socksusername":
+                print 'Current socks username: ' + socksusername
+                uInput = raw_input("New socksusername:")
+                if uInput == 'exit':
+                    usrPrompt = 1
+                    main()
+                else:
+                    config.set('bitmessagesettings', 'socksusername', str(uInput))
+            elif uInput == "sockspassword":
+                print 'Current socks password: ' + sockspassword
+                uInput = raw_input("New password:")
+                if uInput == 'exit':
+                    usrPrompt = 1
+                    main()
+                else:
+                    config.set('bitmessagesettings', 'sockspassword', str(uInput))
+            elif uInput == "exit":
+                usrPrompt = 1
+                break
+            else:
+                print "Invalid input. Please try again."
+                invalidInput = True
+                
+            if invalidInput != True: #don't prompt if they made a mistake. 
+                uInput = raw_input("Would you like to change another setting?(y/n):")
+
+                if uInput != "y":
+                    print 'Changes Made.'
+                    with open(keysPath, 'wb') as configfile:
+                        config.write(configfile)
+                    restartBmNotify()
+                    break
+                
+            
+    elif uInput == "n":
+        usrPrompt = 1
+        main()
+    elif uInput == "exit":
+        usrPrompt = 1
+        main()
+    else:
+        print "Invalid input."
+        usrPrompt = 1
+        main()
+    
+#Begin BM address verifiication
 
 ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
@@ -232,7 +437,7 @@ def decodeAddress(address):
         return False
 
     return True
-
+#End BM address verifiication
 
 def listAdd(): #Lists all of the addresses and their info
     jsonAddresses = json.loads(api.listAddresses())
@@ -281,7 +486,11 @@ def sendMsg(toAddress, fromAddress, subject, message): #With no arguments sent, 
             found = False
             while True:
                 print ' '
-                fromAddress = raw_input("Enter an Address or Address Label to send from:") # todo: add ability to type in label instead of full address
+                fromAddress = raw_input("Enter an Address or Address Label to send from:")
+
+                if fromAddress == "exit":
+                    usrPrompt = 1
+                    main()
 
                 for addNum in range (0, numAddresses): #processes all of the addresses
                     label = jsonAddresses['addresses'][addNum]['label']
@@ -338,7 +547,11 @@ def sendBrd(fromAddress, subject, message): #sends a broadcast
             found = False
             while True:
                 print ' '
-                fromAddress = raw_input("Enter an Address or Address Label to send from:") # todo: add ability to type in label instead of full address
+                fromAddress = raw_input("Enter an Address or Address Label to send from:")
+
+                if fromAddress == "exit":
+                    usrPrompt = 1
+                    main()
 
                 for addNum in range (0, numAddresses): #processes all of the addresses
                     label = jsonAddresses['addresses'][addNum]['label']
@@ -447,7 +660,9 @@ def UI(usrInput): #Main user menu
 	print '-----------------------------------'
 	print 'help or h - This help file.'
 	print 'apiTest - Tests the API'
-	print 'exit - Exits the program'
+	print 'bmSettings - BitMessage settings'
+	print 'exit - Can be entered at anytime, will return you to the main menu.'
+	print 'quit - Quits the program'
 	print '-----------------------------------'
 	print 'listAddresses - Lists all of the users addresses'
 	print 'generateAddress - Generates a new address'
@@ -469,8 +684,13 @@ def UI(usrInput): #Main user menu
             
 	print ' '
         main()
-
-    elif usrInput == "exit": #Exits the application
+        
+    elif usrInput == "bmSettings": #tests the API Connection.
+        bmSettings()
+        print ' '
+        main()
+        
+    elif usrInput == "quit": #Quits the application
         print 'Bye'
         sys.exit()
         os.exit()
@@ -501,7 +721,9 @@ def UI(usrInput): #Main user menu
                 ripe = False
                 print genAdd(lbl,deterministic, passphrase, numOfAdd, addVNum, streamNum, ripe)
                 main()
-                
+            elif isRipe == "exit":
+                usrPrompt = 1
+                main()
             else:
                 print 'Invalid input'
                 main()
@@ -592,9 +814,13 @@ def UI(usrInput): #Main user menu
             main()
 
 	main()
-        
+
+    elif usrInput == "exit":
+        print 'You are already at the main menu.'
+        usrPrompt = 1
+	main()
     else:
-	print 'unknown command'
+	print 'Unknown command.'
 	usrPrompt = 1
 	main()
     
