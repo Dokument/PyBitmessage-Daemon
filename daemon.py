@@ -2,7 +2,7 @@
 # Created by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
 # Distributed under the MIT/X11 software license. See http://www.opensource.org/licenses/mit-license.php.
 
-# This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.5)
+# This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.6)
 
 
 import ConfigParser
@@ -438,6 +438,55 @@ def decodeAddress(address):
 
     return True
 #End BM address verifiication
+	
+def getAddress(passphrase,vNumber,sNumber):
+    passphrase = passphrase.encode('base64')#passphrase must be encoded
+
+    return api.getDeterministicAddress(passphrase,vNumber,sNumber)
+	
+def subscribe():
+    global usrPrompt
+	
+    while True:
+        address = raw_input("Address to subscribe to:")
+
+        if (decodeAddress(address)== False):
+            print 'Invalid. "c" to cancel. Please try again.'
+        elif (address == "c"):
+                usrPrompt = 1
+                main()
+        else:
+            break
+    
+    label = raw_input("Label for this address:")
+    label = label.encode('base64')
+    
+    api.addSubscription(address,label)
+    print ' '
+    print ('You are now subscribed to: ' + address)
+    print ' '
+	
+def unsubscribe():
+    global usrPrompt
+    
+    while True:
+        address = raw_input("Address to unsubscribe from:")
+
+        if (decodeAddress(address)== False):
+            print 'Invalid. "c" to cancel. Please try again.'
+        elif (address == "c"):
+                usrPrompt = 1
+                main()
+        else:
+            break
+    
+    
+    uInput = raw_input("Are you sure?(y/n):")
+    
+    api.deleteSubscription(address)
+    print ' '
+    print ('You are now unsubscribed from: ' + address)
+    print ' '
 
 def listAdd(): #Lists all of the addresses and their info
     jsonAddresses = json.loads(api.listAddresses())
@@ -666,6 +715,10 @@ def UI(usrInput): #Main user menu
 	print '-----------------------------------'
 	print 'listAddresses - Lists all of the users addresses'
 	print 'generateAddress - Generates a new address'
+	print 'getAddress - Retrieves the deterministic address from/for a passphrase.'
+	print '-----------------------------------'
+	print 'subscribe - Subscribes to an address.'
+	print 'unsubscribe - Unsubscribes from an address.'
 	print '-----------------------------------'
 	print 'sendMessage - Sends a message'
 	print 'sendBroadcast - Sends a broadcast'
@@ -709,8 +762,10 @@ def UI(usrInput): #Main user menu
             #lbl = raw_input('Label the new address:') #currently not possible via the api
             passphrase = raw_input('Passphrase:').encode('base64')
             numOfAdd = int(raw_input('Number of addresses to generate:'))
-            addVNum = int(raw_input('Address version number (default "0"):'))
-            streamNum = int(raw_input('Stream number (default "0"):'))
+            #addVNum = int(raw_input('Address version number (default "0"):'))
+            #streamNum = int(raw_input('Stream number (default "0"):'))
+            addVNum = 3
+            streamNum = 1
             isRipe = raw_input('Shorten the address?(y/n):')
 
             if isRipe == "y":
@@ -741,10 +796,30 @@ def UI(usrInput): #Main user menu
             print 'Invalid input'
             main()
         
+    elif usrInput == "getAddress": #Gets the address for/from a passphrase
+
+        phrase = raw_input("Enter the address passphrase:")
+	#vNumber = int(raw_input("Enter the address version number:"))
+	#sNumber = int(raw_input("Enter the address stream number:"))
+	
+	address = getAddress(phrase,3,1)
+	print ' '
+	print ('Address: ' + address)
+	print ' '
+	
+        usrPrompt = 1
+        main()
+    elif usrInput == "subscribe": #Subsribe to an address
+        subscribe()
+        usrPrompt = 1
+        main()
+    elif usrInput == "unsubscribe": #Unsubscribe from an address
+        unsubscribe()
+        usrPrompt = 1
+        main()
     elif usrInput == "sendMessage": #Send Message
         null = ''
         sendMsg(null,null,null,null)
-        
 	main()
         
     elif usrInput == "sendBroadcast": #Send Broadcast from address
