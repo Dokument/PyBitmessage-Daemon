@@ -2,7 +2,7 @@
 # Created by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
 # Distributed under the MIT/X11 software license. See http://www.opensource.org/licenses/mit-license.php.
 
-# This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.7)
+# This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.8)
 
 
 import ConfigParser
@@ -411,7 +411,7 @@ def decodeAddress(address):
         integer = decodeBase58(address)
         
     if integer == 0:
-        print 'invalidcharacters'
+        #print 'invalidcharacters' Removed because it appears in regular sendMessage
         return False
     #after converting to hex, the string will be prepended with a 0x and appended with a L
     hexdata = hex(integer)[2:-1]
@@ -450,11 +450,12 @@ def subscribe():
     while True:
         address = raw_input("Address to subscribe to:")
 
-        if (decodeAddress(address)== False):
-            print 'Invalid. "c" to cancel. Please try again.'
-        elif (address == "c"):
+        if (address == "c"):
                 usrPrompt = 1
+                print ' '
                 main()
+        elif (decodeAddress(address)== False):
+            print 'Invalid. "c" to cancel. Please try again.'
         else:
             break
     
@@ -472,11 +473,12 @@ def unsubscribe():
     while True:
         address = raw_input("Address to unsubscribe from:")
 
-        if (decodeAddress(address)== False):
-            print 'Invalid. "c" to cancel. Please try again.'
-        elif (address == "c"):
+        if (address == "c"):
                 usrPrompt = 1
+                print ' '
                 main()
+        elif (decodeAddress(address)== False):
+            print 'Invalid. "c" to cancel. Please try again.'
         else:
             break
     
@@ -521,7 +523,11 @@ def sendMsg(toAddress, fromAddress, subject, message): #With no arguments sent, 
         while True:
             toAddress = raw_input("To Address:")
 
-            if (decodeAddress(toAddress)== False):
+            if (toAddress == "c"):
+                usrPrompt = 1
+                print ' '
+                main()
+            elif (decodeAddress(toAddress)== False):
                 print 'Invalid. "c" to cancel. Please try again.'
             else:
                 break
