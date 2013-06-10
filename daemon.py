@@ -2,7 +2,7 @@
 # Created by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
 # Distributed under the MIT/X11 software license. See http://www.opensource.org/licenses/mit-license.php.
 
-# This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.6)
+# This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.7)
 
 
 import ConfigParser
@@ -517,7 +517,7 @@ def genAdd(lbl,deterministic, passphrase, numOfAdd, addVNum, streamNum, ripe): #
         return 'Entry Error'
 
 def sendMsg(toAddress, fromAddress, subject, message): #With no arguments sent, sendMsg fills in the blanks. subject and message must be encoded before they are passed.
-    if (toAddress == ''):
+    if (decodeAddress(toAddress)== False):
         while True:
             toAddress = raw_input("To Address:")
 
@@ -527,7 +527,7 @@ def sendMsg(toAddress, fromAddress, subject, message): #With no arguments sent, 
                 break
         
         
-    if (fromAddress == ''):
+    if (decodeAddress(fromAddress)== False):
         jsonAddresses = json.loads(api.listAddresses())
         numAddresses = len(jsonAddresses['addresses']) #Number of addresses
         
@@ -691,7 +691,7 @@ def replyMsg(msgNum): #Allows you to reply to the message you are currently on. 
     message = raw_input("Message:")
     message = message.encode('base64')
 
-    sendMsg(toAdd, fromAdd, subject, message) 
+    sendMsg(toAdd, fromAdd, subject, message)
     
     main()
 
@@ -828,6 +828,7 @@ def UI(usrInput): #Main user menu
 	main()
         
     elif usrInput == "inbox":
+        print 'Loading...'
         inbox()
         main()
         
