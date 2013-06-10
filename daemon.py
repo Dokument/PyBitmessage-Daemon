@@ -2,7 +2,7 @@
 # Created by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
 # Distributed under the MIT/X11 software license. See http://www.opensource.org/licenses/mit-license.php.
 
-# This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.8)
+# This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.9)
 
 
 import ConfigParser
@@ -688,16 +688,19 @@ def replyMsg(msgNum): #Allows you to reply to the message you are currently on. 
     
     fromAdd = inboxMessages['inboxMessages'][msgNum]['toAddress']#Address it was sent To, now the From address
     toAdd = inboxMessages['inboxMessages'][msgNum]['fromAddress'] #Address it was From, now the To address
+    message = inboxMessages['inboxMessages'][msgNum]['message'].decode('base64') #Message that you are replying too.
     
     subject = inboxMessages['inboxMessages'][msgNum]['subject']
     subject = subject.decode('base64')
     subject = "Re: " + subject
     subject = subject.encode('base64')
     
-    message = raw_input("Message:")
-    message = message.encode('base64')
+    newMessage = raw_input("Message:")
+    newMessage = newMessage + '\n------------------------------------------------------\n'
+    newMessage = newMessage + message
+    newMessage = newMessage.encode('base64')
 
-    sendMsg(toAdd, fromAdd, subject, message)
+    sendMsg(toAdd, fromAdd, subject, newMessage)
     
     main()
 
@@ -848,6 +851,8 @@ def UI(usrInput): #Main user menu
         uInput = raw_input("Would you like to reply to this message?(y/n):")#Gives the user the option to reply to the message
 
         if uInput == "y":
+            print 'Loading...'
+            print ' '
             replyMsg(msgNum)
             usrPrompt = 1
             main()
