@@ -5,6 +5,8 @@ PyBitmessage Daemon Client allows users to interact with Bitmessage through the 
 
 It allows you to interact with Bitmessage via the api which unforatunately (as of Bitmessage version 0.3.0) is limited.
 
+Bitmessage API Reference: https://bitmessage.org/wiki/API_Reference
+
 Please make sure that you are using Python 2.7.x or if you would like to download Daemon.exe you can do that on my site here: http://addictronics.com/bitmessage.php Just scroll down to the Daemon section.
 
 Setup
