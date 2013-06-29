@@ -2,7 +2,7 @@
 # Created by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
 # Distributed under the MIT/X11 software license. See http://www.opensource.org/licenses/mit-license.php.
 
-# This is an example of a daemon client for PyBitmessage 0.3.0, by .dok (Version 0.1.9)
+# This is an example of a daemon client for PyBitmessage 0.3.4, by .dok (Version 0.2.0)
 
 
 import ConfigParser
@@ -50,7 +50,7 @@ def lookupAppdataFolder(): #gets the appropriate folders for the .dat files depe
     elif 'win32' in sys.platform or 'win64' in sys.platform:
         dataFolder = path.join(environ['APPDATA'], APPNAME) + '\\'
     else:
-        dataFolder = path.expanduser(path.join("~", "." + APPNAME + "/"))
+        dataFolder = path.expanduser(path.join("~", ".config/" + APPNAME + "/"))
     return dataFolder
 
 def apiInit(apiEnabled):
