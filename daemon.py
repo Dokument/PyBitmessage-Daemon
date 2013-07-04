@@ -2,7 +2,7 @@
 # Created by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
 # Distributed under the MIT/X11 software license. See http://www.opensource.org/licenses/mit-license.php.
 
-# This is an example of a daemon client for PyBitmessage 0.3.4, by .dok (Version 0.2.0)
+# This is an example of a daemon client for PyBitmessage 0.3.4, by .dok (Version 0.2.1)
 
 
 import ConfigParser
@@ -671,6 +671,30 @@ def inbox(): #Lists the messages by: Message Number, To Address Label, From Addr
     print '-----------------------------------'
     print ' '
 
+def outbox(): #Lists the messages in the outbox
+    outboxMessages = json.loads(api.getAllSentMessages())
+    numMessages = len(outboxMessages['sentMessages'])
+    print ' '
+
+    for msgNum in range (0, numMessages): #processes all of the messages in the inbox
+        print '-----------------------------------'
+        print ' '
+        print 'Message Number:',msgNum #Message Number
+        #print 'MsgID:', outboxMessages['sentMessages'][msgNum]['msgid'] #Get the msgid
+        print 'Encoding Type:', outboxMessages['sentMessages'][msgNum]['encodingType'] #Get the encoding type 
+        print 'To:', outboxMessages['sentMessages'][msgNum]['toAddress'] #Get the to address
+        print 'From:', outboxMessages['sentMessages'][msgNum]['fromAddress'] #Get the from address
+        print 'Subject:', outboxMessages['sentMessages'][msgNum]['subject'].decode('base64') #Get the subject       
+        print 'Ackdata:', outboxMessages['sentMessages'][msgNum]['ackData'] #Get the ackdata
+        print 'Last Action Time:', datetime.datetime.fromtimestamp(float(outboxMessages['sentMessages'][msgNum]['lastActionTime'])).strftime('%Y-%m-%d %H:%M:%S')#Get the last action time
+        print 'Status:', outboxMessages['sentMessages'][msgNum]['status']
+
+        print ' '
+
+    print 'There are ',numMessages,' messages in the inbox.'
+    print '-----------------------------------'
+    print ' '
+
 def readMsg(msgNum): #Opens a message for reading
     
     inboxMessages = json.loads(api.getAllInboxMessages())
@@ -732,6 +756,7 @@ def UI(usrInput): #Main user menu
 	print 'sendMessage - Sends a message'
 	print 'sendBroadcast - Sends a broadcast'
 	print 'inbox - Lists the message information in the inbox'
+	print 'outbox - Lists the message information in the outbox'
 	print 'open - Opens a message'
 	print 'delete - Deletes a message'
 	print '-----------------------------------'
@@ -840,7 +865,12 @@ def UI(usrInput): #Main user menu
         print 'Loading...'
         inbox()
         main()
-        
+
+    elif usrInput == "outbox":
+        print 'Loading...'
+        outbox()
+        main()
+
     elif usrInput == "open": #Opens a message from the inbox for viewing. 
 
         msgNum = int(raw_input("message number to open:"))
