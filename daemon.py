@@ -2,7 +2,7 @@
 # Created by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
 # Distributed under the MIT/X11 software license. See http://www.opensource.org/licenses/mit-license.php.
 
-# This is an example of a daemon client for PyBitmessage 0.3.4, by .dok (Version 0.2.1)
+# This is an example of a daemon client for PyBitmessage 0.3.5, by .dok (Version 0.2.2)
 
 
 import ConfigParser
@@ -438,15 +438,15 @@ def decodeAddress(address):
 
     return True
 #End BM address verifiication
-	
+
 def getAddress(passphrase,vNumber,sNumber):
     passphrase = passphrase.encode('base64')#passphrase must be encoded
 
     return api.getDeterministicAddress(passphrase,vNumber,sNumber)
-	
+
 def subscribe():
     global usrPrompt
-	
+
     while True:
         address = raw_input("Address to subscribe to:")
 
@@ -466,7 +466,7 @@ def subscribe():
     print ' '
     print ('You are now subscribed to: ' + address)
     print ' '
-	
+
 def unsubscribe():
     global usrPrompt
     
@@ -489,6 +489,23 @@ def unsubscribe():
     print ' '
     print ('You are now unsubscribed from: ' + address)
     print ' '
+
+def listSubscriptions():
+    #jsonAddresses = json.loads(api.listSubscriptions())
+    #numAddresses = len(jsonAddresses['addresses']) #Number of addresses
+    print ' '
+    print 'Label, Address, Enabled'
+    print ' '
+    print api.listSubscriptions()
+    '''for addNum in range (0, numAddresses): #processes all of the addresses and lists them out
+        label = jsonAddresses['addresses'][addNum]['label']
+        address = jsonAddresses['addresses'][addNum]['address']
+        enabled = jsonAddresses['addresses'][addNum]['enabled']
+
+        print label, address, enabled
+    '''
+    print ' '
+
 
 def listAdd(): #Lists all of the addresses and their info
     jsonAddresses = json.loads(api.listAddresses())
@@ -665,33 +682,38 @@ def inbox(): #Lists the messages by: Message Number, To Address Label, From Addr
         print 'To:', inboxMessages['inboxMessages'][msgNum]['toAddress'] #Get the to address
         print 'From:', inboxMessages['inboxMessages'][msgNum]['fromAddress'] #Get the from address
         print 'Subject:', inboxMessages['inboxMessages'][msgNum]['subject'].decode('base64') #Get the subject
-        print datetime.datetime.fromtimestamp(float(inboxMessages['inboxMessages'][msgNum]['receivedTime'])).strftime('%Y-%m-%d %H:%M:%S')
+        print 'Received:', datetime.datetime.fromtimestamp(float(inboxMessages['inboxMessages'][msgNum]['receivedTime'])).strftime('%Y-%m-%d %H:%M:%S')
         print ' '
+        
+        '''if (inboxMessages['inboxMessages'][msgNum]['read'] == 0):
+            print 'Unread'
+        else:
+            print 'Read'
+        print ' '
+        '''
     print 'There are ',numMessages,' messages in the inbox.'
     print '-----------------------------------'
     print ' '
 
-def outbox(): #Lists the messages in the outbox
+def outbox():
     outboxMessages = json.loads(api.getAllSentMessages())
     numMessages = len(outboxMessages['sentMessages'])
+    print numMessages
     print ' '
 
-    for msgNum in range (0, numMessages): #processes all of the messages in the inbox
+    for msgNum in range (0, numMessages): #processes all of the messages in the outbox
         print '-----------------------------------'
         print ' '
         print 'Message Number:',msgNum #Message Number
-        #print 'MsgID:', outboxMessages['sentMessages'][msgNum]['msgid'] #Get the msgid
-        print 'Encoding Type:', outboxMessages['sentMessages'][msgNum]['encodingType'] #Get the encoding type 
+        #print 'Message ID:', outboxMessages['sentMessages'][msgNum]['msgid']
         print 'To:', outboxMessages['sentMessages'][msgNum]['toAddress'] #Get the to address
         print 'From:', outboxMessages['sentMessages'][msgNum]['fromAddress'] #Get the from address
-        print 'Subject:', outboxMessages['sentMessages'][msgNum]['subject'].decode('base64') #Get the subject       
-        print 'Ackdata:', outboxMessages['sentMessages'][msgNum]['ackData'] #Get the ackdata
-        print 'Last Action Time:', datetime.datetime.fromtimestamp(float(outboxMessages['sentMessages'][msgNum]['lastActionTime'])).strftime('%Y-%m-%d %H:%M:%S')#Get the last action time
-        print 'Status:', outboxMessages['sentMessages'][msgNum]['status']
-
+        print 'Subject:', outboxMessages['sentMessages'][msgNum]['subject'].decode('base64') #Get the subject
+        print 'Status:', outboxMessages['sentMessages'][msgNum]['status'] #Get the subject
+        
+        print 'Last Action Time:', datetime.datetime.fromtimestamp(float(outboxMessages['sentMessages'][msgNum]['lastActionTime'])).strftime('%Y-%m-%d %H:%M:%S')
         print ' '
-
-    print 'There are ',numMessages,' messages in the inbox.'
+    print 'There are ',numMessages,' messages in the outbox.'
     print '-----------------------------------'
     print ' '
 
@@ -752,6 +774,7 @@ def UI(usrInput): #Main user menu
 	print '-----------------------------------'
 	print 'subscribe - Subscribes to an address.'
 	print 'unsubscribe - Unsubscribes from an address.'
+	#print 'listSubscriptions - Lists all of the subscriptions.'
 	print '-----------------------------------'
 	print 'sendMessage - Sends a message'
 	print 'sendBroadcast - Sends a broadcast'
@@ -759,6 +782,7 @@ def UI(usrInput): #Main user menu
 	print 'outbox - Lists the message information in the outbox'
 	print 'open - Opens a message'
 	print 'delete - Deletes a message'
+	print 'empty - Empties outbox'
 	print '-----------------------------------'
 	print ' '
 	main()
@@ -794,7 +818,8 @@ def UI(usrInput): #Main user menu
             deterministic = True
 
             #lbl = raw_input('Label the new address:') #currently not possible via the api
-            passphrase = raw_input('Passphrase:').encode('base64')
+            lbl = ''
+            passphrase = raw_input('Passphrase:')#.encode('base64')
             numOfAdd = int(raw_input('Number of addresses to generate:'))
             #addVNum = int(raw_input('Address version number (default "0"):'))
             #streamNum = int(raw_input('Stream number (default "0"):'))
@@ -808,7 +833,7 @@ def UI(usrInput): #Main user menu
                 main()
             elif isRipe == "n":
                 ripe = False
-                print genAdd(lbl,deterministic, passphrase, numOfAdd, addVNum, streamNum, ripe)
+                print genAdd(lbl, deterministic, passphrase, numOfAdd, addVNum, streamNum, ripe)
                 main()
             elif isRipe == "exit":
                 usrPrompt = 1
@@ -835,12 +860,12 @@ def UI(usrInput): #Main user menu
         phrase = raw_input("Enter the address passphrase:")
 	#vNumber = int(raw_input("Enter the address version number:"))
 	#sNumber = int(raw_input("Enter the address stream number:"))
-	
-	address = getAddress(phrase,3,1)
+
+	address = getAddress(phrase,3,1)#,vNumber,sNumber)
 	print ' '
 	print ('Address: ' + address)
 	print ' '
-	
+
         usrPrompt = 1
         main()
     elif usrInput == "subscribe": #Subsribe to an address
@@ -849,6 +874,10 @@ def UI(usrInput): #Main user menu
         main()
     elif usrInput == "unsubscribe": #Unsubscribe from an address
         unsubscribe()
+        usrPrompt = 1
+        main()
+    elif usrInput == "listSubscriptions": #Unsubscribe from an address
+        listSubscriptions()
         usrPrompt = 1
         main()
     elif usrInput == "sendMessage": #Send Message
@@ -936,6 +965,16 @@ def UI(usrInput): #Main user menu
         print 'You are already at the main menu.'
         usrPrompt = 1
 	main()
+        
+    elif usrInput == "empty": #Empties the outbox
+        outboxMessages = json.loads(api.getAllSentMessages())
+        numMessages = len(outboxMessages['sentMessages'])
+        
+        for msgNum in range (0, numMessages): #processes all of the messages in the outbox
+            outboxMessages['sentMessages'][int(msgNum)]['msgid'] #gets the message ID via the message index number'
+
+        print 'Outbox is empty'
+
     else:
 	print 'Unknown command.'
 	usrPrompt = 1
