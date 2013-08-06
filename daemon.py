@@ -2,7 +2,7 @@
 # Created by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
 # Distributed under the MIT/X11 software license. See http://www.opensource.org/licenses/mit-license.php.
 
-# This is an example of a daemon client for PyBitmessage 0.3.5, by .dok (Version 0.2.2)
+# This is an example of a daemon client for PyBitmessage 0.3.5, by .dok (Version 0.2.4)
 
 
 import ConfigParser
@@ -10,6 +10,8 @@ import xmlrpclib
 import datetime
 import hashlib
 import getopt
+import imghdr
+import ntpath
 import json
 import time
 import sys
@@ -535,6 +537,119 @@ def genAdd(lbl,deterministic, passphrase, numOfAdd, addVNum, streamNum, ripe): #
     else:
         return 'Entry Error'
 
+def saveFile(fileName, fileData): #Allows attachments and messages/broadcats to be saved
+
+    #This section finds all invalid characters and replaces them with ~
+    fileName = fileName.replace(" ", "")
+    fileName = fileName.replace("/", "~")
+    fileName = fileName.replace("\\", "~")
+    fileName = fileName.replace(":", "~")
+    fileName = fileName.replace("*", "~")
+    fileName = fileName.replace("?", "~")
+    fileName = fileName.replace('"', "~")
+    fileName = fileName.replace("<", "~")
+    fileName = fileName.replace(">", "~")
+    fileName = fileName.replace("|", "~")
+
+    directory = 'attachments'
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+        
+    filePath = directory +'/'+ fileName
+
+    '''try: #Checks if file already exists
+        with open(filePath):
+            print 'File Already Exists'
+            return
+    except IOError: pass'''
+
+
+    f = open(filePath, 'wb+') #Begin saving to file
+    f.write(fileData.decode("base64"))
+    f.close
+
+    print 'Successfully saved '+ filePath + '\n'
+
+def attachment(): #Allows users to attach a file to their message or broadcast
+    isImage = False
+    theAttachment = ''
+    
+    while True:#loops until valid path is entered
+        filePath = raw_input('\nEnter path to attachment:')  
+
+        try:
+            with open(filePath): break
+        except IOError:
+            print '%s was not found on your filesystem or can not be opened.' % filePath
+            pass
+
+    #print filesize, and encoding estimate with confirmation if file is over X size (1mb?)
+    invSize = os.path.getsize(filePath)
+    invSize = (invSize / 1024) #Converts to kilobytes
+    round(invSize,2) #Rounds to two decimal places
+
+    if (invSize > 500.0):
+        print 'WARNING:The file that you are trying to attach is ', invSize, 'KB and will take considerable time to send.'
+        uInput = raw_input('Are you sure you still want to attach it?(y/n):')
+
+        if uInput != "y":
+            print 'Attachment discarded.'
+            return ''
+    elif (invSize > 184320.0): #If larger than 180MB, discard.
+        print '\nAttachment too big, maximum allowed size:180MB'
+        main()
+    
+    pathLen = len(str(ntpath.basename(filePath))) #Gets the length of the filepath excluding the filename
+    fileName = filePath[(len(str(filePath)) - pathLen):] #reads the filename
+        
+    filetype = imghdr.what(filePath) #Tests if it is an image file
+    if filetype is not None:
+        print '\n---------------------------------------------------'
+        print 'Attachment detected as an Image.'
+        print '<img> tags will automatically be included,'
+        print 'allowing the recipient to view the image'
+        print 'using the "View HTML code..." option in Bitmessage.'
+        print '---------------------------------------------------\n'
+        isImage = True
+        time.sleep(2)
+        
+    print '\nEncoding Attachment, Please Wait ...\n' #Alert the user that the encoding process may take some time.
+    
+    with open(filePath, 'rb') as f: #Begin the actual encoding
+        data = f.read(188743680) #Reads files up to 180MB, the maximum size for Bitmessage.
+        data = data.encode("base64")
+
+    if (isImage == True): #If it is an image, include image tags in the message
+        theAttachment = """
+<!-- Note: Image attachment below. Please use the right click "View HTML code ..." option to view it. -->
+<!-- Sent using Bitmessage Daemon. https://github.com/Dokument/PyBitmessage-Daemon -->
+ 
+Filename:%s 
+Filesize:%sKB 
+Encoding:base64 
+ 
+<center>
+    <div id="image">
+        <img alt = "%s" src='data:image/%s;base64, %s' />
+    </div>
+</center>""" % (fileName,invSize, fileName, filetype, data)
+    else: #Else it is not an image so do not include the embedded image code.
+        theAttachment = """
+<!-- Note: File attachment below. Please use a base64 decoder, or Daemon, to save it. -->
+<!-- Sent using Bitmessage Daemon. https://github.com/Dokument/PyBitmessage-Daemon -->
+ 
+Filename:%s 
+Filesize:%sKB 
+Encoding:base64 
+ 
+<attachment src='data:file/%s;base64, %s' />""" % (fileName,invSize, fileName, data)
+
+        #Would you like to add another attachment?
+        #theAttachment = theAttachment, '\n\n'
+
+    return theAttachment
+
 def sendMsg(toAddress, fromAddress, subject, message): #With no arguments sent, sendMsg fills in the blanks. subject and message must be encoded before they are passed.
     if (decodeAddress(toAddress)== False):
         while True:
@@ -599,11 +714,18 @@ def sendMsg(toAddress, fromAddress, subject, message): #With no arguments sent, 
             fromAddress = jsonAddresses['addresses'][0]['address']
 
     if (subject == ''):
-            subject = raw_input("Subject:")
-            subject = subject.encode('base64')
+        subject = raw_input("Subject:")
+        subject = subject.encode('base64')
     if (message == ''):
-            message = raw_input("Message:")
-            message = message.encode('base64')
+        message = raw_input("Message:")
+
+        uInput = raw_input('Would you like to add an attachment?(y/n):')
+        if uInput == "y":
+            message = message + '\n\n' + attachment()
+        
+        message = message.encode('base64')
+            
+
 
     ackData = api.sendMessage(toAddress, fromAddress, subject, message)
     print 'The ackData is: ', ackData #.decode("hex")
@@ -664,6 +786,11 @@ def sendBrd(fromAddress, subject, message): #sends a broadcast
             subject = subject.encode('base64')
     if (message == ''):
             message = raw_input("Message:")
+
+            uInput = raw_input('Would you like to add an attachment?(y/n):')
+            if uInput == "y":
+                message = message + '\n\n' + attachment()
+            
             message = message.encode('base64')
 
     ackData = api.sendBroadcast(fromAddress, subject, message)
@@ -698,7 +825,6 @@ def inbox(): #Lists the messages by: Message Number, To Address Label, From Addr
 def outbox():
     outboxMessages = json.loads(api.getAllSentMessages())
     numMessages = len(outboxMessages['sentMessages'])
-    print numMessages
     print ' '
 
     for msgNum in range (0, numMessages): #processes all of the messages in the outbox
@@ -717,16 +843,90 @@ def outbox():
     print '-----------------------------------'
     print ' '
 
+def readSentMsg(msgNum): #Opens a sent message for reading
+    outboxMessages = json.loads(api.getAllSentMessages())
+    numMessages = len(outboxMessages['sentMessages'])
+    print ' '
+
+    if (msgNum >= numMessages):
+        print '\nInvalid Message Number.\n'
+        main()
+
+    #Begin attachment detection
+    message = outboxMessages['sentMessages'][msgNum]['message'].decode('base64')
+
+    if (';base64,' in message): #Found this text in the message, there is probably an attachment.
+        attPos= message.index(";base64,") #Finds the attachment position
+        attEndPos = message.index("' />") #Finds the end of the attachment
+        #attLen = attEndPos - attPos #Finds the length of the message
+
+        uInput = raw_input('\nAttachment Detected. Would you like to save the attachment?(y/n):')
+        if uInput == "y":
+            
+            attachment = message[attPos+9:attEndPos]
+            
+            if ('Filename:' in message): #We can get the filename too
+                fnPos = message.index('Filename:') #Finds position of the filename
+                fnEndPos = message.index('Encoding:') #Finds the end position
+                #fnLen = fnEndPos - fnPos #Finds the length of the filename
+
+                fileName = message[fnPos+9:fnEndPos-2]
+                saveFile(fileName,attachment)
+        
+        message = message[:attPos] + '~<Attachment data removed for easier viewing>~' + message[attEndPos:]
+            
+    #End attachment Detection
+            
+    print ' '
+    print 'To:', outboxMessages['sentMessages'][msgNum]['toAddress'] #Get the to address
+    print 'From:', outboxMessages['sentMessages'][msgNum]['fromAddress'] #Get the from address
+    print 'Subject:', outboxMessages['sentMessages'][msgNum]['subject'].decode('base64') #Get the subject
+    print 'Status:', outboxMessages['sentMessages'][msgNum]['status'] #Get the subject
+    print 'Last Action Time:', datetime.datetime.fromtimestamp(float(outboxMessages['sentMessages'][msgNum]['lastActionTime'])).strftime('%Y-%m-%d %H:%M:%S')
+    print 'Message:'
+    print message #inboxMessages['inboxMessages'][msgNum]['message'].decode('base64')
+
 def readMsg(msgNum): #Opens a message for reading
     
     inboxMessages = json.loads(api.getAllInboxMessages())
+    numMessages = len(inboxMessages['inboxMessages'])
+
+    if (msgNum >= numMessages):
+        print '\nInvalid Message Number.\n'
+        main()
+
+    #Begin attachment detection
+    message = inboxMessages['inboxMessages'][msgNum]['message'].decode('base64')
+
+    if (';base64,' in message): #Found this text in the message, there is probably an attachment.
+        attPos= message.index(";base64,") #Finds the attachment position
+        attEndPos = message.index("' />") #Finds the end of the attachment
+        #attLen = attEndPos - attPos #Finds the length of the message
+
+        uInput = raw_input('\nAttachment Detected. Would you like to save the attachment?(y/n):')
+        if uInput == "y":
+            
+            attachment = message[attPos+9:attEndPos]
+            
+            if ('Filename:' in message): #We can get the filename too
+                fnPos = message.index('Filename:') #Finds position of the filename
+                fnEndPos = message.index('Encoding:') #Finds the end position
+                #fnLen = fnEndPos - fnPos #Finds the length of the filename
+
+                fileName = message[fnPos+9:fnEndPos-2]
+                saveFile(fileName,attachment)
+        
+        message = message[:attPos] + '~<Attachment data removed for easier viewing>~' + message[attEndPos:]
+            
+    #End attachment Detection
+            
     print ' '
     print 'To:', inboxMessages['inboxMessages'][msgNum]['toAddress'] #Get the to address
     print 'From:', inboxMessages['inboxMessages'][msgNum]['fromAddress'] #Get the from address
     print 'Subject:', inboxMessages['inboxMessages'][msgNum]['subject'].decode('base64') #Get the subject
     print datetime.datetime.fromtimestamp(float(inboxMessages['inboxMessages'][msgNum]['receivedTime'])).strftime('%Y-%m-%d %H:%M:%S')
     print 'Message:'
-    print inboxMessages['inboxMessages'][msgNum]['message'].decode('base64')
+    print message #inboxMessages['inboxMessages'][msgNum]['message'].decode('base64')
 
 def replyMsg(msgNum): #Allows you to reply to the message you are currently on. Saves typing in the addresses and subject.
 
@@ -742,6 +942,11 @@ def replyMsg(msgNum): #Allows you to reply to the message you are currently on. 
     subject = subject.encode('base64')
     
     newMessage = raw_input("Message:")
+
+    uInput = raw_input('Would you like to add an attachment?(y/n):')
+    if uInput == "y":
+        newMessage = newMessage + '\n\n' + attachment()
+        
     newMessage = newMessage + '\n------------------------------------------------------\n'
     newMessage = newMessage + message
     newMessage = newMessage.encode('base64')
@@ -754,6 +959,12 @@ def delMsg(msgNum): #Deletes a specified message from the inbox
     inboxMessages = json.loads(api.getAllInboxMessages())
     msgId = inboxMessages['inboxMessages'][int(msgNum)]['msgid'] #gets the message ID via the message index number
     return api.trashMessage(msgId)
+
+def delSentMsg(msgNum): #Deletes a specified message from the outbox
+    outboxMessages = json.loads(api.getAllSentMessages())
+    msgId = outboxMessages['sentMessages'][int(msgNum)]['msgid'] #gets the message ID via the message index number
+    return api.trashMessage(msgId)
+
 
 def UI(usrInput): #Main user menu
     global usrPrompt
@@ -779,8 +990,11 @@ def UI(usrInput): #Main user menu
 	print 'sendMessage - Sends a message'
 	print 'sendBroadcast - Sends a broadcast'
 	print 'inbox - Lists the message information in the inbox'
-	print 'outbox - Lists the message information in the outbox'
 	print 'open - Opens a message'
+	print 'save - Saves message to text file'
+	print 'outbox - Lists the message information in the outbox'
+	print 'openSent - Opens a sent message'
+	print 'saveSent - Saves outbox message to text file'
 	print 'delete - Deletes a message'
 	print 'empty - Empties outbox'
 	print '-----------------------------------'
@@ -944,6 +1158,69 @@ def UI(usrInput): #Main user menu
             print 'Invalid entry'
             usrPrompt = 1
             main()
+    elif usrInput == "openSent": #Opens a message from the outbox for viewing. 
+
+        msgNum = int(raw_input("message number to open:"))
+
+        readSentMsg(msgNum)
+
+        print ' '
+
+        #Delete message not working yet
+        '''uInput = raw_input("Would you like to delete this message?(y/n):")#Gives the user the option to delete the message
+
+        if uInput == "y":
+            print 'Are you sure(y/n)?' #Prevent accidental deletion
+            uInput = raw_input(">")
+
+            if uInput == "y":
+                delSentMsg(msgNum)
+                print 'Done'
+                print ' '
+                usrPrompt = 1
+                main()
+            else:
+                usrPrompt = 1
+                main()
+        
+        elif uInput == "n":
+            usrPrompt = 1
+            main()
+        else:
+            print 'Invalid entry'
+            usrPrompt = 1
+            main()'''
+            
+    elif usrInput == "save":
+
+        msgNum = int(raw_input("message number to save:"))
+
+        inboxMessages = json.loads(api.getAllInboxMessages())
+        subject =  inboxMessages['inboxMessages'][msgNum]['subject'].decode('base64') 
+        message =  inboxMessages['inboxMessages'][msgNum]['message']#Don't decode since it is done in the saveFile function
+
+        subject = subject +'.txt'
+        
+        saveFile(subject,message)
+        
+        usrPrompt = 1
+        main()
+
+    elif usrInput == "saveSent":
+
+        msgNum = int(raw_input("message number to save:"))
+
+        outboxMessages = json.loads(api.getAllSentMessages())
+        subject =  outboxMessages['sentMessages'][msgNum]['subject'].decode('base64') 
+        message =  outboxMessages['sentMessages'][msgNum]['message']#Don't decode since it is done in the saveFile function
+
+        subject = subject +'.txt'
+        
+        saveFile(subject,message)
+        
+        usrPrompt = 1
+        main()
+
         
     elif usrInput == "delete": #will delete a message from the system, not reflected on the UI.
         msgNum = int(raw_input("Message number to delete:"))
