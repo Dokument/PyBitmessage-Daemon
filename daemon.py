@@ -818,6 +818,10 @@ def inbox(): #Lists the messages by: Message Number, To Address Label, From Addr
             print 'Read'
         print ' '
         '''
+        
+        if (msgNum%20 == 0 and msgNum != 0):
+            uInput = userInput('(Press Enter to continue or type (Exit) to return to the main menu.)').lower()
+            
     print '\n     -----------------------------------'
     print '     There are ',numMessages,' messages in the inbox.'
     print '     -----------------------------------\n'
@@ -841,6 +845,9 @@ def outbox():
         print '     Status:', outboxMessages['sentMessages'][msgNum]['status'] #Get the subject
         
         print '     Last Action Time:', datetime.datetime.fromtimestamp(float(outboxMessages['sentMessages'][msgNum]['lastActionTime'])).strftime('%Y-%m-%d %H:%M:%S')
+
+        if (msgNum%20 == 0 and msgNum != 0):
+            uInput = userInput('(Press Enter to continue or type (Exit) to return to the main menu.)').lower()
 
     print '\n     -----------------------------------'
     print '     There are ',numMessages,' messages in the outbox.'
