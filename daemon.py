@@ -2,7 +2,7 @@
 # Created by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
 # Distributed under the MIT/X11 software license. See http://www.opensource.org/licenses/mit-license.php.
 
-# This is an example of a daemon client for PyBitmessage 0.3.5, by .dok (Version 0.2.5)
+# This is an example of a daemon client for PyBitmessage 0.3.5, by .dok (Version 0.2.6)
 
 
 import ConfigParser
@@ -22,13 +22,15 @@ keysPath = 'keys.dat'
 usrPrompt = 0 #0 = First Start, 1 = prompt, 2 = no prompt if the program is starting up
 
 def userInput(message): #Checks input for exit or quit. Also formats for input, etc
+    global usrPrompt
     print '\n' + message
     uInput = raw_input('> ')
 
-    if (uInput == 'exit'): #Returns the user to the main menu 
-        usrPrompt = 0
+    if (uInput.lower() == 'exit'): #Returns the user to the main menu
+        usrPrompt = 1
         main()
-    elif (uInput == 'quit'): #Quits the program
+        
+    elif (uInput.lower() == 'quit'): #Quits the program
         print '\n     Bye\n'
         sys.exit()
         os.exit()
@@ -69,6 +71,7 @@ def lookupAppdataFolder(): #gets the appropriate folders for the .dat files depe
 
 def apiInit(apiEnabled):
     global keysPath
+    global usrPrompt
     config = ConfigParser.SafeConfigParser()
     config.read(keysPath)
 
@@ -107,16 +110,28 @@ def apiInit(apiEnabled):
 
         if uInput == "y": #User said yes, initalize the api by writing these values to the keys.dat file
             print ' '
+            
             apiUsr = userInput("API Username")
             apiPwd = userInput("API Password")
+            apiInterface = userInput("API Interface. (127.0.0.1)")
             apiPort = userInput("API Port")
+            apiEnabled = userInput("API Enabled? (True) or (False)").lower()
+            daemon = userInput("Daemon mode Enabled? (True) or (False)").lower()
+
+            if (daemon != 'true' and daemon != 'false'):
+                print '\n     Invalid Entry for Daemon.\n'
+                uInput = 1
+                main()
+                
             print '     -----------------------------------\n'
                 
+            config.set('bitmessagesettings', 'port', '8444') #sets the bitmessage port to stop the warning about the api not properly being setup. This is in the event that the keys.dat is in a different directory or is created locally to connect to a machine remotely.
             config.set('bitmessagesettings','apienabled','true')
             config.set('bitmessagesettings', 'apiport', apiPort)
             config.set('bitmessagesettings', 'apiinterface', '127.0.0.1')
             config.set('bitmessagesettings', 'apiusername', apiUsr)
             config.set('bitmessagesettings', 'apipassword', apiPwd)
+            config.set('bitmessagesettings', 'daemon', daemon)
             with open(keysPath, 'wb') as configfile:
                 config.write(configfile)
             
@@ -138,6 +153,7 @@ def apiInit(apiEnabled):
 
 def apiData():
     global keysPath
+    global usrPrompt
     
     config = ConfigParser.SafeConfigParser()
     keysPath = 'keys.dat'
@@ -155,11 +171,12 @@ def apiData():
         config.read(keysPath)
 
         try:
-            config.get('bitmessagesettings','settingsversion')
+            config.get('bitmessagesettings','port')
         except:
             #keys.dat was not there either, something is wrong.
             print '\n     ******************************************************************'
-            print '     There was a problem trying to access the Bitmessage keys.dat file.'
+            print '     There was a problem trying to access the Bitmessage keys.dat file'
+            print '                    or keys.dat is not set up correctly'
             print '       Make sure that daemon is in the same directory as Bitmessage. '
             print '     ******************************************************************\n'
             usrPrompt = 1
@@ -209,17 +226,18 @@ def bmSettings(): #Allows the viewing and modification of keys.dat settings.
     config.read(keysPath)#Read the keys.dat
 
     port = config.get('bitmessagesettings', 'port')
-    startonlogon = config.get('bitmessagesettings', 'startonlogon')
-    minimizetotray = config.get('bitmessagesettings', 'minimizetotray')
-    showtraynotifications = config.get('bitmessagesettings', 'showtraynotifications')
-    startintray = config.get('bitmessagesettings', 'startintray')
+    startonlogon = safeConfigGetBoolean('bitmessagesettings', 'startonlogon')
+    minimizetotray = safeConfigGetBoolean('bitmessagesettings', 'minimizetotray')
+    showtraynotifications = safeConfigGetBoolean('bitmessagesettings', 'showtraynotifications')
+    startintray = safeConfigGetBoolean('bitmessagesettings', 'startintray')
     defaultnoncetrialsperbyte = config.get('bitmessagesettings', 'defaultnoncetrialsperbyte')
     defaultpayloadlengthextrabytes = config.get('bitmessagesettings', 'defaultpayloadlengthextrabytes')
+    daemon = safeConfigGetBoolean('bitmessagesettings', 'daemon')
 
     socksproxytype = config.get('bitmessagesettings', 'socksproxytype')
     sockshostname = config.get('bitmessagesettings', 'sockshostname')
     socksport = config.get('bitmessagesettings', 'socksport')
-    socksauthentication = config.get('bitmessagesettings', 'socksauthentication')
+    socksauthentication = safeConfigGetBoolean('bitmessagesettings', 'socksauthentication')
     socksusername = config.get('bitmessagesettings', 'socksusername')
     sockspassword = config.get('bitmessagesettings', 'sockspassword')
 
@@ -228,20 +246,20 @@ def bmSettings(): #Allows the viewing and modification of keys.dat settings.
     print '     |   Current Bitmessage Settings   |'
     print '     -----------------------------------'
     print '     port = ' + port
-    print '     startonlogon = ' + startonlogon
-    print '     minimizetotray = ' + minimizetotray
-    print '     showtraynotifications = ' + showtraynotifications
-    print '     startintray = ' + startintray
+    print '     startonlogon = ' + str(startonlogon)
+    print '     minimizetotray = ' + str(minimizetotray)
+    print '     showtraynotifications = ' + str(showtraynotifications)
+    print '     startintray = ' + str(startintray)
     print '     defaultnoncetrialsperbyte = ' + defaultnoncetrialsperbyte
     print '     defaultpayloadlengthextrabytes = ' + defaultpayloadlengthextrabytes
-    #print '     daemon = ' + daemon
+    print '     daemon = ' + str(daemon)
     print '\n     ------------------------------------'
     print '     |   Current Connection Settings   |'
     print '     -----------------------------------'
     print '     socksproxytype = ' + socksproxytype
     print '     sockshostname = ' + sockshostname
     print '     socksport = ' + socksport
-    print '     socksauthentication = ' + socksauthentication
+    print '     socksauthentication = ' + str(socksauthentication)
     print '     socksusername = ' + socksusername
     print '     sockspassword = ' + sockspassword
     print ' '
@@ -259,19 +277,19 @@ def bmSettings(): #Allows the viewing and modification of keys.dat settings.
                 uInput = userInput("Enter the new port number.")
                 config.set('bitmessagesettings', 'port', str(uInput))
             elif uInput == "startonlogon":
-                print '     Current status: ' + startonlogon
+                print '     Current status: ' + str(startonlogon)
                 uInput = userInput("Enter the new status.")
                 config.set('bitmessagesettings', 'startonlogon', str(uInput))
             elif uInput == "minimizetotray":
-                print '     Current status: ' + minimizetotray
+                print '     Current status: ' + str(minimizetotray)
                 uInput = userInput("Enter the new status.")
                 config.set('bitmessagesettings', 'minimizetotray', str(uInput))
             elif uInput == "showtraynotifications":
-                print '     Current status: ' + showtraynotifications
+                print '     Current status: ' + str(showtraynotifications)
                 uInput = userInput("Enter the new status.")
                 config.set('bitmessagesettings', 'showtraynotifications', str(uInput))
             elif uInput == "startintray":
-                print '     Current status: ' + startintray
+                print '     Current status: ' + str(startintray)
                 uInput = userInput("Enter the new status.")
                 config.set('bitmessagesettings', 'startintray', str(uInput))
             elif uInput == "defaultnoncetrialsperbyte":
@@ -283,9 +301,9 @@ def bmSettings(): #Allows the viewing and modification of keys.dat settings.
                 uInput = userInput("Enter the new defaultpayloadlengthextrabytes.")
                 config.set('bitmessagesettings', 'defaultpayloadlengthextrabytes', str(uInput))
             elif uInput == "daemon":
-                print '     Current status: ' + daemon
-                uInput = userInput("Enter the new status.")
-                config.set('bitmessagesettings', 'defaultpayloadlengthextrabytes', str(uInput))
+                print '     Current status: ' + str(daemon)
+                uInput = userInput("Enter the new status.").lower()
+                config.set('bitmessagesettings', 'daemon', str(uInput))
             elif uInput == "socksproxytype":
                 print '     Current socks proxy type: ' + socksproxytype
                 print "Possibilities: 'none', 'SOCKS4a', 'SOCKS5'."
@@ -300,7 +318,7 @@ def bmSettings(): #Allows the viewing and modification of keys.dat settings.
                 uInput = userInput("Enter the new socksport.")
                 config.set('bitmessagesettings', 'socksport', str(uInput))
             elif uInput == "socksauthentication":
-                print '     Current status: ' + socksauthentication
+                print '     Current status: ' + str(socksauthentication)
                 uInput = userInput("Enter the new status.")
                 config.set('bitmessagesettings', 'socksauthentication', str(uInput))
             elif uInput == "socksusername":
@@ -449,6 +467,7 @@ def unsubscribe():
     print ('\n     You are now unsubscribed from: ' + address + '\n')
 
 def listSubscriptions():
+    global usrPrompt
     #jsonAddresses = json.loads(api.listSubscriptions())
     #numAddresses = len(jsonAddresses['addresses']) #Number of addresses
     print '\nLabel, Address, Enabled\n'
@@ -456,7 +475,7 @@ def listSubscriptions():
         print api.listSubscriptions()
     except:
         print '\n     Connection Error\n'
-        uInput = 0
+        usrPrompt = 0
         main()
         
     '''for addNum in range (0, numAddresses): #processes all of the addresses and lists them out
@@ -470,12 +489,13 @@ def listSubscriptions():
 
 
 def listAdd(): #Lists all of the addresses and their info
+    global usrPrompt
     try:
         jsonAddresses = json.loads(api.listAddresses())
         numAddresses = len(jsonAddresses['addresses']) #Number of addresses
     except:
         print '\n     Connection Error\n'
-        uInput = 0
+        usrPrompt = 0
         main()
 
     #print '\nAddress Number,Label,Address,Stream,Enabled\n'
@@ -496,13 +516,14 @@ def listAdd(): #Lists all of the addresses and their info
     print '     --------------------------------------------------------------------------\n'
 
 def genAdd(lbl,deterministic, passphrase, numOfAdd, addVNum, streamNum, ripe): #Generate address
+    global usrPrompt
     if deterministic == False: #Generates a new address with the user defined label. non-deterministic
         addressLabel = lbl.encode('base64')
         try:
             generatedAddress = api.createRandomAddress(addressLabel)
         except:
             print '\n     Connection Error\n'
-            uInput = 0
+            usrPrompt = 0
             main()
             
         return generatedAddress
@@ -513,7 +534,7 @@ def genAdd(lbl,deterministic, passphrase, numOfAdd, addVNum, streamNum, ripe): #
             generatedAddress = api.createDeterministicAddresses(passphrase, numOfAdd, addVNum, streamNum, ripe)
         except:
             print '\n     Connection Error\n'
-            uInput = 0
+            usrPrompt = 0
             main()
         return generatedAddress
     else:
@@ -554,56 +575,60 @@ def saveFile(fileName, fileData): #Allows attachments and messages/broadcats to 
     print '\n     Successfully saved '+ filePath + '\n'
 
 def attachment(): #Allows users to attach a file to their message or broadcast
-    isImage = False
-    theAttachment = ''
+    theAttachmentS = ''
     
-    while True:#loops until valid path is entered
-        filePath = userInput('\nPlease enter the path to the attachment or just the attachment name if in this folder.')  
+    while True:
 
-        try:
-            with open(filePath): break
-        except IOError:
-            print '\n     %s was not found on your filesystem or can not be opened.\n' % filePath
-            pass
-
-    #print filesize, and encoding estimate with confirmation if file is over X size (1mb?)
-    invSize = os.path.getsize(filePath)
-    invSize = (invSize / 1024) #Converts to kilobytes
-    round(invSize,2) #Rounds to two decimal places
-
-    if (invSize > 500.0):#If over 500KB
-        print '\n     WARNING:The file that you are trying to attach is ', invSize, 'KB and will take considerable time to send.\n'
-        uInput = userInput('Are you sure you still want to attach it, (Y)es or (N)o?').lower()
-
-        if uInput != "y":
-            print '\n     Attachment discarded.\n'
-            return ''
-    elif (invSize > 184320.0): #If larger than 180MB, discard.
-        print '\n     Attachment too big, maximum allowed size:180MB\n'
-        main()
-    
-    pathLen = len(str(ntpath.basename(filePath))) #Gets the length of the filepath excluding the filename
-    fileName = filePath[(len(str(filePath)) - pathLen):] #reads the filename
+        isImage = False
+        theAttachment = ''
         
-    filetype = imghdr.what(filePath) #Tests if it is an image file
-    if filetype is not None:
-        print '\n     ---------------------------------------------------'
-        print '     Attachment detected as an Image.'
-        print '     <img> tags will automatically be included,'
-        print '     allowing the recipient to view the image'
-        print '     using the "View HTML code..." option in Bitmessage.'
-        print '     ---------------------------------------------------\n'
-        isImage = True
-        time.sleep(2)
-        
-    print '\n     Encoding Attachment, Please Wait ...\n' #Alert the user that the encoding process may take some time.
-    
-    with open(filePath, 'rb') as f: #Begin the actual encoding
-        data = f.read(188743680) #Reads files up to 180MB, the maximum size for Bitmessage.
-        data = data.encode("base64")
+        while True:#loops until valid path is entered
+            filePath = userInput('\nPlease enter the path to the attachment or just the attachment name if in this folder.')  
 
-    if (isImage == True): #If it is an image, include image tags in the message
-        theAttachment = """
+            try:
+                with open(filePath): break
+            except IOError:
+                print '\n     %s was not found on your filesystem or can not be opened.\n' % filePath
+                pass
+
+        #print filesize, and encoding estimate with confirmation if file is over X size (1mb?)
+        invSize = os.path.getsize(filePath)
+        invSize = (invSize / 1024) #Converts to kilobytes
+        round(invSize,2) #Rounds to two decimal places
+
+        if (invSize > 500.0):#If over 500KB
+            print '\n     WARNING:The file that you are trying to attach is ', invSize, 'KB and will take considerable time to send.\n'
+            uInput = userInput('Are you sure you still want to attach it, (Y)es or (N)o?').lower()
+
+            if uInput != "y":
+                print '\n     Attachment discarded.\n'
+                return ''
+        elif (invSize > 184320.0): #If larger than 180MB, discard.
+            print '\n     Attachment too big, maximum allowed size:180MB\n'
+            main()
+        
+        pathLen = len(str(ntpath.basename(filePath))) #Gets the length of the filepath excluding the filename
+        fileName = filePath[(len(str(filePath)) - pathLen):] #reads the filename
+            
+        filetype = imghdr.what(filePath) #Tests if it is an image file
+        if filetype is not None:
+            print '\n     ---------------------------------------------------'
+            print '     Attachment detected as an Image.'
+            print '     <img> tags will automatically be included,'
+            print '     allowing the recipient to view the image'
+            print '     using the "View HTML code..." option in Bitmessage.'
+            print '     ---------------------------------------------------\n'
+            isImage = True
+            time.sleep(2)
+            
+        print '\n     Encoding Attachment, Please Wait ...\n' #Alert the user that the encoding process may take some time.
+        
+        with open(filePath, 'rb') as f: #Begin the actual encoding
+            data = f.read(188743680) #Reads files up to 180MB, the maximum size for Bitmessage.
+            data = data.encode("base64")
+
+        if (isImage == True): #If it is an image, include image tags in the message
+            theAttachment = """
 <!-- Note: Image attachment below. Please use the right click "View HTML code ..." option to view it. -->
 <!-- Sent using Bitmessage Daemon. https://github.com/Dokument/PyBitmessage-Daemon -->
  
@@ -615,9 +640,9 @@ Encoding:base64
     <div id="image">
         <img alt = "%s" src='data:image/%s;base64, %s' />
     </div>
-</center>""" % (fileName,invSize, fileName, filetype, data)
-    else: #Else it is not an image so do not include the embedded image code.
-        theAttachment = """
+</center>""" % (fileName,invSize,fileName,filetype,data)
+        else: #Else it is not an image so do not include the embedded image code.
+            theAttachment = """
 <!-- Note: File attachment below. Please use a base64 decoder, or Daemon, to save it. -->
 <!-- Sent using Bitmessage Daemon. https://github.com/Dokument/PyBitmessage-Daemon -->
  
@@ -625,14 +650,20 @@ Filename:%s
 Filesize:%sKB 
 Encoding:base64 
  
-<attachment src='data:file/%s;base64, %s' />""" % (fileName,invSize, fileName, data)
+<attachment alt = "%s" src='data:file/%s;base64, %s' />""" % (fileName,invSize,fileName,fileName,data)
 
-        #Would you like to add another attachment?
-        #theAttachment = theAttachment, '\n\n'
+        uInput = userInput('Would you like to add another attachment, (Y)es or (N)o?').lower()
 
-    return theAttachment
+        if (uInput == 'y' or uInput == 'yes'):#Allows multiple attachments to be added to one message
+            theAttachmentS = str(theAttachmentS) + str(theAttachment)+ '\n\n'
+        elif (uInput == 'n' or uInput == 'no'):
+            break
+        
+    theAttachmentS = theAttachmentS + theAttachment
+    return theAttachmentS
 
 def sendMsg(toAddress, fromAddress, subject, message): #With no arguments sent, sendMsg fills in the blanks. subject and message must be encoded before they are passed.
+    global usrPrompt
     if (decodeAddress(toAddress)== False):
         while True:
             toAddress = userInput("What is the To Address?")
@@ -653,7 +684,7 @@ def sendMsg(toAddress, fromAddress, subject, message): #With no arguments sent, 
             numAddresses = len(jsonAddresses['addresses']) #Number of addresses
         except:
             print '\n     Connection Error\n'
-            uInput = 0
+            usrPrompt = 0
             main()
         
         if (numAddresses > 1): #Ask what address to send from if multiple addresses
@@ -717,11 +748,12 @@ def sendMsg(toAddress, fromAddress, subject, message): #With no arguments sent, 
         print '\n     Message Status:', api.getStatus(ackData), '\n'
     except:
         print '\n     Connection Error\n'
-        uInput = 0
+        usrPrompt = 0
         main()
 
 
 def sendBrd(fromAddress, subject, message): #sends a broadcast
+    global usrPrompt
     if (fromAddress == ''):
 
         try:
@@ -729,7 +761,7 @@ def sendBrd(fromAddress, subject, message): #sends a broadcast
             numAddresses = len(jsonAddresses['addresses']) #Number of addresses
         except:
             print '\n     Connection Error\n'
-            uInput = 0
+            usrPrompt = 0
             main()
         
         if (numAddresses > 1): #Ask what address to send from if multiple addresses
@@ -792,16 +824,17 @@ def sendBrd(fromAddress, subject, message): #sends a broadcast
         print '\n     Message Status:', api.getStatus(ackData), '\n'
     except:
         print '\n     Connection Error\n'
-        uInput = 0
+        usrPrompt = 0
         main()
 
 def inbox(): #Lists the messages by: Message Number, To Address Label, From Address Label, Subject, Received Time)
+    global usrPrompt
     try:
         inboxMessages = json.loads(api.getAllInboxMessages())
         numMessages = len(inboxMessages['inboxMessages'])
     except:
         print '\n     Connection Error\n'
-        uInput = 0
+        usrPrompt = 0
         main()
 
     for msgNum in range (0, numMessages): #processes all of the messages in the inbox
@@ -827,12 +860,13 @@ def inbox(): #Lists the messages by: Message Number, To Address Label, From Addr
     print '     -----------------------------------\n'
 
 def outbox():
+    global usrPrompt
     try:
         outboxMessages = json.loads(api.getAllSentMessages())
         numMessages = len(outboxMessages['sentMessages'])
     except:
         print '\n     Connection Error\n'
-        uInput = 0
+        usrPrompt = 0
         main()
 
     for msgNum in range (0, numMessages): #processes all of the messages in the outbox
@@ -854,12 +888,13 @@ def outbox():
     print '     -----------------------------------\n'
 
 def readSentMsg(msgNum): #Opens a sent message for reading
+    global usrPrompt
     try:
         outboxMessages = json.loads(api.getAllSentMessages())
         numMessages = len(outboxMessages['sentMessages'])
     except:
         print '\n     Connection Error\n'
-        uInput = 0
+        usrPrompt = 0
         main()
             
     print ' '
@@ -871,25 +906,33 @@ def readSentMsg(msgNum): #Opens a sent message for reading
     #Begin attachment detection
     message = outboxMessages['sentMessages'][msgNum]['message'].decode('base64')
 
-    if (';base64,' in message): #Found this text in the message, there is probably an attachment.
-        attPos= message.index(";base64,") #Finds the attachment position
-        attEndPos = message.index("' />") #Finds the end of the attachment
-        #attLen = attEndPos - attPos #Finds the length of the message
+    while True: #Allows multiple messages to be downloaded/saved
+        if (';base64,' in message): #Found this text in the message, there is probably an attachment.
+            attPos= message.index(";base64,") #Finds the attachment position
+            attEndPos = message.index("' />") #Finds the end of the attachment
+            #attLen = attEndPos - attPos #Finds the length of the message
 
-        uInput = userInput('\nAttachment Detected. Would you like to save the attachment, (Y)es or (N)o?').lower()
-        if uInput == "y":
-            
-            attachment = message[attPos+9:attEndPos]
-            
-            if ('Filename:' in message): #We can get the filename too
-                fnPos = message.index('Filename:') #Finds position of the filename
-                fnEndPos = message.index('Filesize:') #Finds the end position
+
+            if ('alt = "' in message): #We can get the filename too
+                fnPos = message.index('alt = "') #Finds position of the filename
+                fnEndPos = message.index('" src=') #Finds the end position
                 #fnLen = fnEndPos - fnPos #Finds the length of the filename
 
-                fileName = message[fnPos+9:fnEndPos-2]
+                fileName = message[fnPos+7:fnEndPos]
+            else:
+                fnPos = attPos
+                fileName = 'Attachment'
+
+            uInput = userInput('\n     Attachment Detected. Would you like to save the attachment, (Y)es or (N)o?').lower()
+            if (uInput == "y" or uInput == 'yes'):
+                
+                attachment = message[attPos+9:attEndPos]                    
                 saveFile(fileName,attachment)
-        
-        message = message[:attPos] + '~<Attachment data removed for easier viewing>~' + message[attEndPos:]
+
+            message = message[:fnPos] + '~<Attachment data removed for easier viewing>~' + message[(attEndPos+4):]
+
+        else:
+            break
             
     #End attachment Detection
             
@@ -903,12 +946,13 @@ def readSentMsg(msgNum): #Opens a sent message for reading
     print ' '
 
 def readMsg(msgNum): #Opens a message for reading
+    global usrPrompt
     try:
         inboxMessages = json.loads(api.getAllInboxMessages())
         numMessages = len(inboxMessages['inboxMessages'])
     except:
         print '\n     Connection Error\n'
-        uInput = 0
+        usrPrompt = 0
         main()
 
     if (msgNum >= numMessages):
@@ -918,25 +962,33 @@ def readMsg(msgNum): #Opens a message for reading
     #Begin attachment detection
     message = inboxMessages['inboxMessages'][msgNum]['message'].decode('base64')
 
-    if (';base64,' in message): #Found this text in the message, there is probably an attachment.
-        attPos= message.index(";base64,") #Finds the attachment position
-        attEndPos = message.index("' />") #Finds the end of the attachment
-        #attLen = attEndPos - attPos #Finds the length of the message
+    while True: #Allows multiple messages to be downloaded/saved
+        if (';base64,' in message): #Found this text in the message, there is probably an attachment.
+            attPos= message.index(";base64,") #Finds the attachment position
+            attEndPos = message.index("' />") #Finds the end of the attachment
+            #attLen = attEndPos - attPos #Finds the length of the message
 
-        uInput = userInput('\n     Attachment Detected. Would you like to save the attachment, (Y)es or (N)o?').lower()
-        if uInput == "y":
-            
-            attachment = message[attPos+9:attEndPos]
-            
-            if ('Filename:' in message): #We can get the filename too
-                fnPos = message.index('Filename:') #Finds position of the filename
-                fnEndPos = message.index('Encoding:') #Finds the end position
+
+            if ('alt = "' in message): #We can get the filename too
+                fnPos = message.index('alt = "') #Finds position of the filename
+                fnEndPos = message.index('" src=') #Finds the end position
                 #fnLen = fnEndPos - fnPos #Finds the length of the filename
 
-                fileName = message[fnPos+9:fnEndPos-2]
+                fileName = message[fnPos+7:fnEndPos]
+            else:
+                fnPos = attPos
+                fileName = 'Attachment'
+
+            uInput = userInput('\n     Attachment Detected. Would you like to save the attachment, (Y)es or (N)o?').lower()
+            if (uInput == "y" or uInput == 'yes'):
+                
+                attachment = message[attPos+9:attEndPos]                    
                 saveFile(fileName,attachment)
-        
-        message = message[:attPos] + '~<Attachment data removed for easier viewing>~' + message[attEndPos:]
+
+            message = message[:fnPos] + '~<Attachment data removed for easier viewing>~' + message[(attEndPos+4):]
+
+        else:
+            break
             
     #End attachment Detection
             
@@ -948,21 +1000,45 @@ def readMsg(msgNum): #Opens a message for reading
     print message #inboxMessages['inboxMessages'][msgNum]['message'].decode('base64')
     print ' '
 
-def replyMsg(msgNum): #Allows you to reply to the message you are currently on. Saves typing in the addresses and subject.
+def replyMsg(msgNum,forwardORreply): #Allows you to reply to the message you are currently on. Saves typing in the addresses and subject.
+    global usrPrompt
+    forwardORreply = forwardORreply.lower() #makes it lowercase
     try:
         inboxMessages = json.loads(api.getAllInboxMessages())
     except:
         print '\n     Connection Error\n'
-        uInput = 0
+        usrPrompt = 0
         main()
     
     fromAdd = inboxMessages['inboxMessages'][msgNum]['toAddress']#Address it was sent To, now the From address
-    toAdd = inboxMessages['inboxMessages'][msgNum]['fromAddress'] #Address it was From, now the To address
+
+    if (forwardORreply == 'reply'):
+        toAdd = inboxMessages['inboxMessages'][msgNum]['fromAddress'] #Address it was From, now the To address
+        subject = "Re: " + subject
+        
+    elif (forwardORreply == 'forward'):
+        subject = "Fwd: " + subject
+        
+        while True:
+            toAdd = userInput("What is the To Address?")
+
+            if (toAdd == "c"):
+                usrPrompt = 1
+                print ' '
+                main()
+            elif (decodeAddress(toAdd)== False):
+                print '\n     Invalid Address. "c" to cancel. Please try again.\n'
+            else:
+                break
+    else:
+        print '\n     Invalid Selection. Reply or Forward only'
+        usrPrompt = 0
+        main()
+        
     message = inboxMessages['inboxMessages'][msgNum]['message'].decode('base64') #Message that you are replying too.
     
     subject = inboxMessages['inboxMessages'][msgNum]['subject']
     subject = subject.decode('base64')
-    subject = "Re: " + subject
     subject = subject.encode('base64')
     
     newMessage = userInput("Enter your Message.")
@@ -980,6 +1056,7 @@ def replyMsg(msgNum): #Allows you to reply to the message you are currently on. 
     main()
 
 def delMsg(msgNum): #Deletes a specified message from the inbox
+    global usrPrompt
     try:
         inboxMessages = json.loads(api.getAllInboxMessages())
         msgId = inboxMessages['inboxMessages'][int(msgNum)]['msgid'] #gets the message ID via the message index number
@@ -987,19 +1064,20 @@ def delMsg(msgNum): #Deletes a specified message from the inbox
         msgAck = api.trashMessage(msgId)
     except:
         print '\n     Connection Error\n'
-        uInput = 0
+        usrPrompt = 0
         main()
         
     return msgAck
 
 def delSentMsg(msgNum): #Deletes a specified message from the outbox
+    global usrPrompt
     try:
         outboxMessages = json.loads(api.getAllSentMessages())
         msgId = outboxMessages['sentMessages'][int(msgNum)]['msgid'] #gets the message ID via the message index number
         msgAck = api.trashSentMessage(msgId)
     except:
         print '\n     Connection Error\n'
-        uInput = 0
+        usrPrompt = 0
         main()
         
     return msgAck
@@ -1109,6 +1187,7 @@ def UI(usrInput): #Main user menu
     elif usrInput == "getaddress": #Gets the address for/from a passphrase
 
         phrase = userInput("Enter the address passphrase.")
+        print '\n     Working...\n'
 	#vNumber = int(raw_input("Enter the address version number:"))
 	#sNumber = int(raw_input("Enter the address stream number:"))
 
@@ -1157,17 +1236,29 @@ def UI(usrInput): #Main user menu
         
         uInput = userInput("Would you like to read a message from the (I)nbox or (O)utbox?").lower()
 
+        if (uInput != 'i' and uInput != 'inbox' and uInput != 'o' and uInput != 'outbox'):
+            print '\n     Invalid Input.\n'
+            usrPrompt = 1
+            main()
+
         msgNum = int(userInput("What is the number of the message you wish to open?"))
 
         if (uInput == 'i' or uInput == 'inbox'):
+            print '\n     Loading...\n'
             readMsg(msgNum)
 
-            uInput = userInput("\nWould you like to (D)elete, (R)eply to, or (Exit) this message?").lower()
+            uInput = userInput("\nWould you like to (D)elete, (F)orward, (R)eply to, or (Exit) this message?").lower()
 
             if (uInput == 'r' or uInput == 'reply'):
                 print '\n     Loading...\n'
                 print ' '
-                replyMsg(msgNum)
+                replyMsg(msgNum,'reply')
+                usrPrompt = 1
+                
+            elif (uInput == 'f' or uInput == 'forward'):
+                print '\n     Loading...\n'
+                print ' '
+                replyMsg(msgNum,'forward')
                 usrPrompt = 1
 
             elif (uInput == "d" or uInput == 'delete'):
@@ -1186,7 +1277,7 @@ def UI(usrInput): #Main user menu
         elif (uInput == 'o' or uInput == 'outbox'):
             readSentMsg(msgNum)
 
-            uInput = userInput("Would you like to (D)elete or (Exit) this message?").lower() #Gives the user the option to delete the message
+            uInput = userInput("Would you like to (D)elete, or (Exit) this message?").lower() #Gives the user the option to delete the message
 
             if (uInput == "d" or uInput == 'delete'):
                 uInput = userInput('Are you sure, (Y)es or (N)o?').lower() #Prevent accidental deletion
@@ -1206,6 +1297,11 @@ def UI(usrInput): #Main user menu
     elif usrInput == "save":
         
         uInput = userInput("Would you like to save a message from the (I)nbox or (O)utbox?").lower()
+
+        if (uInput != 'i' and uInput == 'inbox' and uInput != 'o' and uInput == 'outbox'):
+            print '\n     Invalid Input.\n'
+            usrPrompt = 1
+            main()
 
         if (uInput == 'i' or uInput == 'inbox'):
             inboxMessages = json.loads(api.getAllInboxMessages())
@@ -1317,7 +1413,7 @@ def UI(usrInput): #Main user menu
 	main()
 
     elif usrInput == "exit":
-        print '\n     You are already at the main menu.\n'
+        print '\n     You are already at the main menu. Use "quit" to quit.\n'
         usrPrompt = 1
 	main()
     else:
@@ -1332,13 +1428,16 @@ def main():
     if (usrPrompt == 0):
         print '\n     ------------------------------'
         print '     | Bitmessage Daemon by .dok  |'
-        print '     | Version 0.2.5 for BM 0.3.5 |'
+        print '     | Version 0.2.6 for BM 0.3.5 |'
         print '     ------------------------------'
         api = xmlrpclib.ServerProxy(apiData()) #Connect to BitMessage using these api credentials
 
         if (apiTest() == False):
-            print '\n        WARNING: You are not connected to the Bitmessage client.'
-            print '     Either Bitmessage is not running or your settings are incorrect.\n'
+            print '\n     ****************************************************************'
+            print '        WARNING: You are not connected to the Bitmessage client.'
+            print '     Either Bitmessage is not running or your settings are incorrect.'
+            print '     Use the command "apiTest" or "bmSettings" to resolve this issue.'
+            print '     ****************************************************************\n'
             
         print 'Type (H)elp for a list of commands.' #Startup message
         usrPrompt = 2
