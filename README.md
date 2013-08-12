@@ -16,3 +16,16 @@ Setup
 3. Run Bitmessage.
 4. Run daemon.py and it will either: automatically pull your API information from the keys.dat file or ask if you want to automatically add the API information to the keys.dat file.
 5. Test the API connection with the command "apiTest".
+
+
+Features
+=====
+1. Change bitmessage settings (keys.dat) including setting api information, connection information, and daemon mode
+2. Send and receive messages or broadcasts with or without attachments
+3. Reply to or forward messages
+2. View the inbox/outbox
+3. Save inbox/outbox messages to txt file
+4. Create new identites
+5. Subscribe to/unsubscribe from broadcast addresses
+6. Get addresss from a passphrase without adding to identities
+7. Delete individual or all messages from the inbox or outbox
