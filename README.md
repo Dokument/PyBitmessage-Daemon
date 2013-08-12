@@ -21,6 +21,7 @@ Setup
 Features
 =====
 1. Change bitmessage settings (keys.dat) including setting api information, connection information, and daemon mode
+2. Automatically load api information from bitmessage keys.dat file or create settings for remote connection
 2. Send and receive messages or broadcasts with or without attachments
 3. Reply to or forward messages
 2. View the inbox/outbox
