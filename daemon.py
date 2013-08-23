@@ -2,7 +2,7 @@
 # Created by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
 # Distributed under the MIT/X11 software license. See http://www.opensource.org/licenses/mit-license.php.
 
-# This is an example of a daemon client for PyBitmessage 0.3.5, by .dok (Version 0.2.6)
+# This is an example of a daemon client for PyBitmessage 0.3.5, by .dok (Version 0.2.7)
 
 
 import ConfigParser
@@ -18,6 +18,7 @@ import sys
 import os
 
 api = ''
+keysName = 'keys.dat'
 keysPath = 'keys.dat'
 usrPrompt = 0 #0 = First Start, 1 = prompt, 2 = no prompt if the program is starting up
 
@@ -38,9 +39,9 @@ def userInput(message): #Checks input for exit or quit. Also formats for input, 
         return uInput
     
 def restartBmNotify(): #Prompts the user to restart Bitmessage. 
-    print '\n     ***********************************************************'
-    print '     WARNING: If Bitmessage is running, you must restart it now.'
-    print '     ***********************************************************\n'
+    print '\n     *******************************************************************'
+    print '     WARNING: If Bitmessage is running locally, you must restart it now.'
+    print '     *******************************************************************\n'
 
 def safeConfigGetBoolean(section,field):
     global keysPath
@@ -69,11 +70,26 @@ def lookupAppdataFolder(): #gets the appropriate folders for the .dat files depe
         dataFolder = path.expanduser(path.join("~", ".config/" + APPNAME + "/"))
     return dataFolder
 
+def configInit():
+    global keysName
+    config = ConfigParser.SafeConfigParser()
+    
+    config.add_section('bitmessagesettings')
+    config.set('bitmessagesettings', 'port', '8444')  #Sets the bitmessage port to stop the warning about the api not properly being setup. This is in the event that the keys.dat is in a different directory or is created locally to connect to a machine remotely.
+    config.set('bitmessagesettings','apienabled','true') #Sets apienabled to true in keys.dat
+    
+    with open(keysName, 'wb') as configfile:
+        config.write(configfile)
+
+    print '\n     ' + str(keysName) + ' Initalized in the same directory as daemon.py'
+    print '     You will now need to configure the ' + str(keysName) + ' file.\n'
+
 def apiInit(apiEnabled):
     global keysPath
     global usrPrompt
     config = ConfigParser.SafeConfigParser()
     config.read(keysPath)
+    
 
     
     if (apiEnabled == False): #API information there but the api is disabled.
@@ -97,7 +113,7 @@ def apiInit(apiEnabled):
             main()
             
         else:
-            print '     \nInvalid Entry\n'
+            print '\n     Invalid Entry\n'
             usrPrompt = 1
             main()
     elif (apiEnabled == True): #API correctly setup
@@ -105,7 +121,7 @@ def apiInit(apiEnabled):
         return True
     
     else: #API information was not present.
-        print '     \nkeys.dat not properly configured!\n'
+        print '\n     ' + str(keysPath) + ' not properly configured!\n'
         uInput = userInput("Would you like to do this now, (Y)es or (N)o?").lower()
 
         if uInput == "y": #User said yes, initalize the api by writing these values to the keys.dat file
@@ -152,21 +168,20 @@ def apiInit(apiEnabled):
 
 
 def apiData():
+    global keysName
     global keysPath
     global usrPrompt
     
-    config = ConfigParser.SafeConfigParser()
-    keysPath = 'keys.dat'
-    
+    config = ConfigParser.SafeConfigParser()    
     config.read(keysPath) #First try to load the config file (the keys.dat file) from the program directory
 
     try:
-        config.get('bitmessagesettings','settingsversion')
+        config.get('bitmessagesettings','port')
         appDataFolder = ''
     except:
         #Could not load the keys.dat file in the program directory. Perhaps it is in the appdata directory.
         appDataFolder = lookupAppdataFolder()
-        keysPath = appDataFolder + 'keys.dat'
+        keysPath = appDataFolder + keysPath
         config = ConfigParser.SafeConfigParser()
         config.read(keysPath)
 
@@ -179,6 +194,21 @@ def apiData():
             print '                    or keys.dat is not set up correctly'
             print '       Make sure that daemon is in the same directory as Bitmessage. '
             print '     ******************************************************************\n'
+
+            uInput = userInput("Would you like to create a keys.dat in the local directory, (Y)es or (N)o?").lower()
+    
+            if (uInput == "y" or uInput == "yes"):
+                configInit()
+                keysPath = keysName
+                usrPrompt = 0
+                main()
+            elif (uInput == "n" or uInput == "no"):
+                print '\n     Trying Again.\n'
+                usrPrompt = 0
+                main()
+            else:
+                print '\n     Invalid Input.\n'
+
             usrPrompt = 1
             main()
 
@@ -205,6 +235,7 @@ def apiData():
         
 #End keys.dat interactions
 
+
 def apiTest(): #Tests the API connection to bitmessage. Returns true if it is connected.
 
     try:
@@ -224,8 +255,13 @@ def bmSettings(): #Allows the viewing and modification of keys.dat settings.
     keysPath = 'keys.dat'
     
     config.read(keysPath)#Read the keys.dat
-
-    port = config.get('bitmessagesettings', 'port')
+    try:
+		port = config.get('bitmessagesettings', 'port')
+    except:
+		print '\n     File not found.\n'
+		usrPrompt = 0
+		main()
+	
     startonlogon = safeConfigGetBoolean('bitmessagesettings', 'startonlogon')
     minimizetotray = safeConfigGetBoolean('bitmessagesettings', 'minimizetotray')
     showtraynotifications = safeConfigGetBoolean('bitmessagesettings', 'showtraynotifications')
@@ -1366,7 +1402,7 @@ def UI(usrInput): #Main user menu
                         print '     Deleting message ', msgNum+1, ' of ', numMessages
                         delMsg(0)
 
-                    print '\n     Outbox is empty.'
+                    print '\n     Inbox is empty.'
                     usrPrompt = 1
                 else:
                     delMsg(int(msgNum))
