@@ -1047,7 +1047,11 @@ def replyMsg(msgNum,forwardORreply): #Allows you to reply to the message you are
         main()
     
     fromAdd = inboxMessages['inboxMessages'][msgNum]['toAddress']#Address it was sent To, now the From address
-
+    message = inboxMessages['inboxMessages'][msgNum]['message'].decode('base64') #Message that you are replying too.
+    
+    subject = inboxMessages['inboxMessages'][msgNum]['subject']
+    subject = subject.decode('base64')
+    
     if (forwardORreply == 'reply'):
         toAdd = inboxMessages['inboxMessages'][msgNum]['fromAddress'] #Address it was From, now the To address
         subject = "Re: " + subject
@@ -1071,10 +1075,6 @@ def replyMsg(msgNum,forwardORreply): #Allows you to reply to the message you are
         usrPrompt = 0
         main()
         
-    message = inboxMessages['inboxMessages'][msgNum]['message'].decode('base64') #Message that you are replying too.
-    
-    subject = inboxMessages['inboxMessages'][msgNum]['subject']
-    subject = subject.decode('base64')
     subject = subject.encode('base64')
     
     newMessage = userInput("Enter your Message.")
