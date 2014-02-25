@@ -581,7 +581,7 @@ def saveFile(fileName, fileData): #Allows attachments and messages/broadcats to 
     #This section finds all invalid characters and replaces them with ~
     fileName = fileName.replace(" ", "")
     fileName = fileName.replace("/", "~")
-    #fileName = fileName.replace("\", "~") How do I get this to work...?
+    #fileName = fileName.replace("\\", "~") How do I get this to work...?
     fileName = fileName.replace(":", "~")
     fileName = fileName.replace("*", "~")
     fileName = fileName.replace("?", "~")
@@ -876,8 +876,8 @@ def inbox(): #Lists the messages by: Message Number, To Address Label, From Addr
     for msgNum in range (0, numMessages): #processes all of the messages in the inbox
         print '     -----------------------------------\n'
         print '     Message Number:',msgNum #Message Number
-        print '     To:', inboxMessages['inboxMessages'][msgNum]['toAddress'] #Get the to address
-        print '     From:', inboxMessages['inboxMessages'][msgNum]['fromAddress'] #Get the from address
+        print '     To:', getLabelFromAddresses(inboxMessages['inboxMessages'][msgNum]['toAddress']) #Get the to address
+        print '     From:', getLabelFromAddressBook(inboxMessages['inboxMessages'][msgNum]['fromAddress']) #Get the from address
         print '     Subject:', inboxMessages['inboxMessages'][msgNum]['subject'].decode('base64') #Get the subject
         print '     Received:', datetime.datetime.fromtimestamp(float(inboxMessages['inboxMessages'][msgNum]['receivedTime'])).strftime('%Y-%m-%d %H:%M:%S')
         
@@ -909,8 +909,8 @@ def outbox():
         print '\n     -----------------------------------\n'
         print '     Message Number:',msgNum #Message Number
         #print '     Message ID:', outboxMessages['sentMessages'][msgNum]['msgid']
-        print '     To:', outboxMessages['sentMessages'][msgNum]['toAddress'] #Get the to address
-        print '     From:', outboxMessages['sentMessages'][msgNum]['fromAddress'] #Get the from address
+        print '     To:', getLabelFromAddressBook(outboxMessages['sentMessages'][msgNum]['toAddress']) #Get the to address
+        print '     From:', getLabelFromAddresses(outboxMessages['sentMessages'][msgNum]['fromAddress']) #Get the from address
         print '     Subject:', outboxMessages['sentMessages'][msgNum]['subject'].decode('base64') #Get the subject
         print '     Status:', outboxMessages['sentMessages'][msgNum]['status'] #Get the subject
         
@@ -972,8 +972,8 @@ def readSentMsg(msgNum): #Opens a sent message for reading
             
     #End attachment Detection
             
-    print '\n     To:', outboxMessages['sentMessages'][msgNum]['toAddress'] #Get the to address
-    print '     From:', outboxMessages['sentMessages'][msgNum]['fromAddress'] #Get the from address
+    print '\n     To:', getLabelFromAddressBook(outboxMessages['sentMessages'][msgNum]['toAddress']) #Get the to address
+    print '     From:', getLabelFromAddresses(outboxMessages['sentMessages'][msgNum]['fromAddress']) #Get the from address
     print '     Subject:', outboxMessages['sentMessages'][msgNum]['subject'].decode('base64') #Get the subject
     print '     Status:', outboxMessages['sentMessages'][msgNum]['status'] #Get the subject
     print '     Last Action Time:', datetime.datetime.fromtimestamp(float(outboxMessages['sentMessages'][msgNum]['lastActionTime'])).strftime('%Y-%m-%d %H:%M:%S')
@@ -1028,8 +1028,8 @@ def readMsg(msgNum): #Opens a message for reading
             
     #End attachment Detection
             
-    print '\n     To:', inboxMessages['inboxMessages'][msgNum]['toAddress'] #Get the to address
-    print '     From:', inboxMessages['inboxMessages'][msgNum]['fromAddress'] #Get the from address
+    print '\n     To:', getLabelFromAddresses(inboxMessages['inboxMessages'][msgNum]['toAddress']) #Get the to address
+    print '     From:', getLabelFromAddressBook(inboxMessages['inboxMessages'][msgNum]['fromAddress']) #Get the from address
     print '     Subject:', inboxMessages['inboxMessages'][msgNum]['subject'].decode('base64') #Get the subject
     print '     Received:',datetime.datetime.fromtimestamp(float(inboxMessages['inboxMessages'][msgNum]['receivedTime'])).strftime('%Y-%m-%d %H:%M:%S')
     print '     Message:\n'
@@ -1117,6 +1117,42 @@ def delSentMsg(msgNum): #Deletes a specified message from the outbox
         main()
         
     return msgAck
+
+def getLabelFromAddressBook(address):
+    global usrPrompt
+
+    try:
+    	response = api.listAddressBookEntries()
+    	# if api is too old just return the address
+    	if("API Error 0020" in response): return address
+        addressBook = json.loads(response)
+        for entry in addressBook['addresses']:
+            if entry['address'] == address:
+                return "%s (%s)" % (entry['label'].decode('base64'), address)
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+
+    return address
+
+def getLabelFromAddresses(address):
+    global usrPrompt
+
+    try:
+    	response = api.listAddresses2()
+    	# if api is too old just return the address
+    	if("API Error 0020" in response): return address
+        addresses = json.loads(response)
+        for entry in addresses['addresses']:
+            if entry['address'] == address:
+                return "%s (%s)" % (entry['label'].decode('base64'), address)
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+
+    return address
 
 
 def UI(usrInput): #Main user menu
@@ -1451,11 +1487,11 @@ def UI(usrInput): #Main user menu
     elif usrInput == "exit":
         print '\n     You are already at the main menu. Use "quit" to quit.\n'
         usrPrompt = 1
-	main()
+        main()
     else:
-	print '\n     "',usrInput,'" is not a command.\n'
-	usrPrompt = 1
-	main()
+        print '\n     "',usrInput,'" is not a command.\n'
+        usrPrompt = 1
+        main()
     
 def main():
     global api
@@ -1486,7 +1522,11 @@ def main():
     elif (usrPrompt == 1):
         print '\nType (H)elp for a list of commands.' #Startup message
         usrPrompt = 2
-        
-    UI((raw_input('>').lower()).replace(" ", ""))
-      
-main()
+
+    try:
+        UI((raw_input('>').lower()).replace(" ", ""))
+    except EOFError:
+        UI("quit")
+
+if __name__ == "__main__":
+    main()
