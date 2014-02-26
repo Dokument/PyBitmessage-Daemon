@@ -1136,7 +1136,7 @@ def buildKnownAddresses():
     try:
         response = api.listAddressBookEntries()
         # if api is too old just return the address
-        if("API Error 0020" in response): return
+        if "API Error 0020" in response: return
         addressBook = json.loads(response)
         for entry in addressBook['addresses']:
             if entry['address'] not in knownAddresses:
@@ -1150,7 +1150,7 @@ def buildKnownAddresses():
     try:
         response = api.listAddresses2()
         # if api is too old just return the address
-        if("API Error 0020" in response): return address
+        if "API Error 0020" in response: return address
         addresses = json.loads(response)
         for entry in addresses['addresses']:
             if entry['address'] not in knownAddresses:
@@ -1160,7 +1160,17 @@ def buildKnownAddresses():
         usrPrompt = 0
         main()
 
-
+def addAddressToAddressBook(address, label):
+    try:
+        response = api.addAddressBookEntry(address, label.encode('base64'))
+        if "API Error" in response:
+            # if we got an API error return the number by getting the number
+            # after the second space and removing the trailing colon
+            return int(response.split()[2][:-1])
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
 
 def UI(usrInput): #Main user menu
     global usrPrompt
@@ -1181,6 +1191,7 @@ def UI(usrInput): #Main user menu
 	print '     | listAddresses   | Lists all of the users addresses             |'
 	print '     | generateAddress | Generates a new address                      |'
 	print '     | getAddress      | Get determinist address from passphrase      |'
+        print '     | addAddressBookEntry | Add address to Address Book              |'
 	print '     |-----------------|----------------------------------------------|'
 	print '     | subscribe       | Subscribes to an address                     |'
 	print '     | unsubscribe     | Unsubscribes from an address                 |'
@@ -1495,6 +1506,16 @@ def UI(usrInput): #Main user menu
         print '\n     You are already at the main menu. Use "quit" to quit.\n'
         usrPrompt = 1
         main()
+
+    elif usrInput == "addaddressbookentry":
+        address = userInput('Enter address')
+        label = userInput('Enter label')
+        res = addAddressToAddressBook(address, label)
+        if res == 16: print '\n     Error: Address already exists in Address Book.\n'
+        if res == 20: print '\n     Error: API function not supported.\n'
+        usrPrompt = 1
+        main()
+ 
     else:
         print '\n     "',usrInput,'" is not a command.\n'
         usrPrompt = 1
