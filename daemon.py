@@ -1135,7 +1135,7 @@ def buildKnownAddresses():
     # add from address book
     try:
         response = api.listAddressBookEntries()
-        # if api is too old just return the address
+        # if api is too old then fail
         if "API Error 0020" in response: return
         addressBook = json.loads(response)
         for entry in addressBook['addresses']:
@@ -1149,8 +1149,8 @@ def buildKnownAddresses():
     # add from my addresses
     try:
         response = api.listAddresses2()
-        # if api is too old just return the address
-        if "API Error 0020" in response: return address
+        # if api is too old just return then fail
+        if "API Error 0020" in response: return
         addresses = json.loads(response)
         for entry in addresses['addresses']:
             if entry['address'] not in knownAddresses:
