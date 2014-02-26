@@ -21,6 +21,7 @@ api = ''
 keysName = 'keys.dat'
 keysPath = 'keys.dat'
 usrPrompt = 0 #0 = First Start, 1 = prompt, 2 = no prompt if the program is starting up
+knownAddresses = dict()
 
 def userInput(message): #Checks input for exit or quit. Also formats for input, etc
     global usrPrompt
@@ -876,8 +877,8 @@ def inbox(): #Lists the messages by: Message Number, To Address Label, From Addr
     for msgNum in range (0, numMessages): #processes all of the messages in the inbox
         print '     -----------------------------------\n'
         print '     Message Number:',msgNum #Message Number
-        print '     To:', getLabelFromAddresses(inboxMessages['inboxMessages'][msgNum]['toAddress']) #Get the to address
-        print '     From:', getLabelFromAddressBook(inboxMessages['inboxMessages'][msgNum]['fromAddress']) #Get the from address
+        print '     To:', getLabelForAddress(inboxMessages['inboxMessages'][msgNum]['toAddress']) #Get the to address
+        print '     From:', getLabelForAddress(inboxMessages['inboxMessages'][msgNum]['fromAddress']) #Get the from address
         print '     Subject:', inboxMessages['inboxMessages'][msgNum]['subject'].decode('base64') #Get the subject
         print '     Received:', datetime.datetime.fromtimestamp(float(inboxMessages['inboxMessages'][msgNum]['receivedTime'])).strftime('%Y-%m-%d %H:%M:%S')
         
@@ -909,8 +910,8 @@ def outbox():
         print '\n     -----------------------------------\n'
         print '     Message Number:',msgNum #Message Number
         #print '     Message ID:', outboxMessages['sentMessages'][msgNum]['msgid']
-        print '     To:', getLabelFromAddressBook(outboxMessages['sentMessages'][msgNum]['toAddress']) #Get the to address
-        print '     From:', getLabelFromAddresses(outboxMessages['sentMessages'][msgNum]['fromAddress']) #Get the from address
+        print '     To:', getLabelForAddress(outboxMessages['sentMessages'][msgNum]['toAddress']) #Get the to address
+        print '     From:', getLabelForAddress(outboxMessages['sentMessages'][msgNum]['fromAddress']) #Get the from address
         print '     Subject:', outboxMessages['sentMessages'][msgNum]['subject'].decode('base64') #Get the subject
         print '     Status:', outboxMessages['sentMessages'][msgNum]['status'] #Get the subject
         
@@ -972,8 +973,8 @@ def readSentMsg(msgNum): #Opens a sent message for reading
             
     #End attachment Detection
             
-    print '\n     To:', getLabelFromAddressBook(outboxMessages['sentMessages'][msgNum]['toAddress']) #Get the to address
-    print '     From:', getLabelFromAddresses(outboxMessages['sentMessages'][msgNum]['fromAddress']) #Get the from address
+    print '\n     To:', getLabelForAddress(outboxMessages['sentMessages'][msgNum]['toAddress']) #Get the to address
+    print '     From:', getLabelForAddress(outboxMessages['sentMessages'][msgNum]['fromAddress']) #Get the from address
     print '     Subject:', outboxMessages['sentMessages'][msgNum]['subject'].decode('base64') #Get the subject
     print '     Status:', outboxMessages['sentMessages'][msgNum]['status'] #Get the subject
     print '     Last Action Time:', datetime.datetime.fromtimestamp(float(outboxMessages['sentMessages'][msgNum]['lastActionTime'])).strftime('%Y-%m-%d %H:%M:%S')
@@ -1028,8 +1029,8 @@ def readMsg(msgNum): #Opens a message for reading
             
     #End attachment Detection
             
-    print '\n     To:', getLabelFromAddresses(inboxMessages['inboxMessages'][msgNum]['toAddress']) #Get the to address
-    print '     From:', getLabelFromAddressBook(inboxMessages['inboxMessages'][msgNum]['fromAddress']) #Get the from address
+    print '\n     To:', getLabelForAddress(inboxMessages['inboxMessages'][msgNum]['toAddress']) #Get the to address
+    print '     From:', getLabelForAddress(inboxMessages['inboxMessages'][msgNum]['fromAddress']) #Get the from address
     print '     Subject:', inboxMessages['inboxMessages'][msgNum]['subject'].decode('base64') #Get the subject
     print '     Received:',datetime.datetime.fromtimestamp(float(inboxMessages['inboxMessages'][msgNum]['receivedTime'])).strftime('%Y-%m-%d %H:%M:%S')
     print '     Message:\n'
@@ -1118,41 +1119,47 @@ def delSentMsg(msgNum): #Deletes a specified message from the outbox
         
     return msgAck
 
-def getLabelFromAddressBook(address):
+def getLabelForAddress(address):
     global usrPrompt
 
+    if address in knownAddresses:
+        return knownAddresses[address]
+    else:
+        buildKnownAddresses()
+        if address in knownAddresses:
+            return knownAddresses[address]
+
+    return address
+
+def buildKnownAddresses():
+    # add from address book
     try:
-    	response = api.listAddressBookEntries()
-    	# if api is too old just return the address
-    	if("API Error 0020" in response): return address
+        response = api.listAddressBookEntries()
+        # if api is too old just return the address
+        if("API Error 0020" in response): return
         addressBook = json.loads(response)
         for entry in addressBook['addresses']:
-            if entry['address'] == address:
-                return "%s (%s)" % (entry['label'].decode('base64'), address)
+            if entry['address'] not in knownAddresses:
+                knownAddresses[entry['address']] = "%s (%s)" % (entry['label'].decode('base64'), entry['address'])
     except:
         print '\n     Connection Error\n'
         usrPrompt = 0
         main()
 
-    return address
-
-def getLabelFromAddresses(address):
-    global usrPrompt
-
+    # add from my addresses
     try:
-    	response = api.listAddresses2()
-    	# if api is too old just return the address
-    	if("API Error 0020" in response): return address
+        response = api.listAddresses2()
+        # if api is too old just return the address
+        if("API Error 0020" in response): return address
         addresses = json.loads(response)
         for entry in addresses['addresses']:
-            if entry['address'] == address:
-                return "%s (%s)" % (entry['label'].decode('base64'), address)
+            if entry['address'] not in knownAddresses:
+                knownAddresses[entry['address']] = "%s (%s)" % (entry['label'].decode('base64'), entry['address'])
     except:
         print '\n     Connection Error\n'
         usrPrompt = 0
         main()
 
-    return address
 
 
 def UI(usrInput): #Main user menu
