@@ -257,12 +257,12 @@ def bmSettings(): #Allows the viewing and modification of keys.dat settings.
     
     config.read(keysPath)#Read the keys.dat
     try:
-		port = config.get('bitmessagesettings', 'port')
+        port = config.get('bitmessagesettings', 'port')
     except:
-		print '\n     File not found.\n'
-		usrPrompt = 0
-		main()
-	
+        print '\n     File not found.\n'
+        usrPrompt = 0
+        main()
+    
     startonlogon = safeConfigGetBoolean('bitmessagesettings', 'startonlogon')
     minimizetotray = safeConfigGetBoolean('bitmessagesettings', 'minimizetotray')
     showtraynotifications = safeConfigGetBoolean('bitmessagesettings', 'showtraynotifications')
@@ -864,7 +864,7 @@ def sendBrd(fromAddress, subject, message): #sends a broadcast
         usrPrompt = 0
         main()
 
-def inbox(): #Lists the messages by: Message Number, To Address Label, From Address Label, Subject, Received Time)
+def inbox(unreadOnly = False): #Lists the messages by: Message Number, To Address Label, From Address Label, Subject, Received Time)
     global usrPrompt
     try:
         inboxMessages = json.loads(api.getAllInboxMessages())
@@ -874,26 +874,26 @@ def inbox(): #Lists the messages by: Message Number, To Address Label, From Addr
         usrPrompt = 0
         main()
 
+    messagesPrinted = 0
+    messagesUnread = 0
     for msgNum in range (0, numMessages): #processes all of the messages in the inbox
-        print '     -----------------------------------\n'
-        print '     Message Number:',msgNum #Message Number
-        print '     To:', getLabelForAddress(inboxMessages['inboxMessages'][msgNum]['toAddress']) #Get the to address
-        print '     From:', getLabelForAddress(inboxMessages['inboxMessages'][msgNum]['fromAddress']) #Get the from address
-        print '     Subject:', inboxMessages['inboxMessages'][msgNum]['subject'].decode('base64') #Get the subject
-        print '     Received:', datetime.datetime.fromtimestamp(float(inboxMessages['inboxMessages'][msgNum]['receivedTime'])).strftime('%Y-%m-%d %H:%M:%S')
-        
-        '''if (inboxMessages['inboxMessages'][msgNum]['read'] == 0):
-            print 'Unread'
-        else:
-            print 'Read'
-        print ' '
-        '''
-        
-        if (msgNum%20 == 0 and msgNum != 0):
+        message = inboxMessages['inboxMessages'][msgNum]
+        # if we are displaying all messages or if this message is unread then display it
+        if not unreadOnly or not message['read']:
+            print '     -----------------------------------\n'
+            print '     Message Number:',msgNum #Message Number
+            print '     To:', getLabelForAddress(message['toAddress']) #Get the to address
+            print '     From:', getLabelForAddress(message['fromAddress']) #Get the from address
+            print '     Subject:', message['subject'].decode('base64') #Get the subject
+            print '     Received:', datetime.datetime.fromtimestamp(float(message['receivedTime'])).strftime('%Y-%m-%d %H:%M:%S')
+            messagesPrinted += 1
+            if not message['read']: messagesUnread += 1
+
+        if (messagesPrinted%20 == 0 and messagesPrinted != 0):
             uInput = userInput('(Press Enter to continue or type (Exit) to return to the main menu.)').lower()
             
     print '\n     -----------------------------------'
-    print '     There are ',numMessages,' messages in the inbox.'
+    print '     There are %d unread messages of %d messages in the inbox.' % (messagesUnread, numMessages)
     print '     -----------------------------------\n'
 
 def outbox():
@@ -1028,7 +1028,6 @@ def readMsg(msgNum): #Opens a message for reading
             break
             
     #End attachment Detection
-            
     print '\n     To:', getLabelForAddress(inboxMessages['inboxMessages'][msgNum]['toAddress']) #Get the to address
     print '     From:', getLabelForAddress(inboxMessages['inboxMessages'][msgNum]['fromAddress']) #Get the from address
     print '     Subject:', inboxMessages['inboxMessages'][msgNum]['subject'].decode('base64') #Get the subject
@@ -1036,6 +1035,7 @@ def readMsg(msgNum): #Opens a message for reading
     print '     Message:\n'
     print message #inboxMessages['inboxMessages'][msgNum]['message'].decode('base64')
     print ' '
+    return inboxMessages['inboxMessages'][msgNum]['msgid']
 
 def replyMsg(msgNum,forwardORreply): #Allows you to reply to the message you are currently on. Saves typing in the addresses and subject.
     global usrPrompt
@@ -1160,60 +1160,142 @@ def buildKnownAddresses():
         usrPrompt = 0
         main()
 
-def addAddressToAddressBook(address, label):
+def listAddressBookEntries():
     try:
-        response = api.addAddressBookEntry(address, label.encode('base64'))
+        response = api.listAddressBookEntries()
         if "API Error" in response:
-            # if we got an API error return the number by getting the number
-            # after the second space and removing the trailing colon
-            return int(response.split()[2][:-1])
+            return getAPIErrorCode(response)
+        addressBook = json.loads(response)
+        print
+        print '     --------------------------------------------------------------'
+        print '     |        Label       |                Address                |'
+        print '     |--------------------|---------------------------------------|'
+        for entry in addressBook['addresses']:
+            label = entry['label'].decode('base64')
+            address = entry['address']
+            if (len(label) > 19): label = label[:16] + '...'
+            print '     | ' + label.ljust(19) + '| ' + address.ljust(37) + ' |'
+        print '     --------------------------------------------------------------'
+        print
+
     except:
         print '\n     Connection Error\n'
         usrPrompt = 0
         main()
+
+def addAddressToAddressBook(address, label):
+    try:
+        response = api.addAddressBookEntry(address, label.encode('base64'))
+        if "API Error" in response:
+            return getAPIErrorCode(response)
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+
+def deleteAddressFromAddressBook(address):
+    try:
+        response = api.deleteAddressBookEntry(address)
+        if "API Error" in response:
+            return getAPIErrorCode(response)
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+
+def getAPIErrorCode(response):
+    if "API Error" in response:
+        # if we got an API error return the number by getting the number
+        # after the second space and removing the trailing colon
+        return int(response.split()[2][:-1])
+
+def markMessageRead(messageID):
+    try:
+        response = api.getInboxMessageByID(messageID, True)
+        if "API Error" in response:
+            return getAPIErrorCode(response)
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+
+def markMessageUnread(messageID):
+    try:
+        response = api.getInboxMessageByID(messageID, False)
+        if "API Error" in response:
+            return getAPIErrorCode(response)
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+
+def markAllMessagesRead():
+    try:
+        inboxMessages = json.loads(api.getAllInboxMessages())['inboxMessages']
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+    for message in inboxMessages:
+        if not message['read']:
+            markMessageRead(message['msgid'])
+
+def markAllMessagesUnread():
+    try:
+        inboxMessages = json.loads(api.getAllInboxMessages())['inboxMessages']
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+    for message in inboxMessages:
+        if message['read']:
+            markMessageUnread(message['msgid'])
+
 
 def UI(usrInput): #Main user menu
     global usrPrompt
     
     if usrInput == "help" or usrInput == "h" or usrInput == "?":
         print ' '
-	print '     ------------------------------------------------------------------'
-	print '     |        https://github.com/Dokument/PyBitmessage-Daemon         |'
-	print '     |----------------------------------------------------------------|'
-	print '     | Command         | Description                                  |'
-	print '     |-----------------|----------------------------------------------|'
-	print '     | help            | This help file.                              |'
-	print '     | apiTest         | Tests the API                                |'
-	print '     | bmSettings      | BitMessage settings                          |'
-	print '     | exit            | Use anytime to return to main menu           |'
-	print '     | quit            | Quits the program                            |'
-	print '     |-----------------|----------------------------------------------|'
-	print '     | listAddresses   | Lists all of the users addresses             |'
-	print '     | generateAddress | Generates a new address                      |'
-	print '     | getAddress      | Get determinist address from passphrase      |'
-        print '     | addAddressBookEntry | Add address to Address Book              |'
-	print '     |-----------------|----------------------------------------------|'
-	print '     | subscribe       | Subscribes to an address                     |'
-	print '     | unsubscribe     | Unsubscribes from an address                 |'
-	#print '     | listSubscriptions | Lists all of the subscriptions.              |'
-	print '     |-----------------|----------------------------------------------|'
-	print '     | inbox           | Lists the message information for the inbox  |'
-	print '     | outbox          | Lists the message information for the outbox |'
-	print '     | send            | Send a new message or broadcast              |'
-	#print '     | unread          | Lists all unread inbox messages              |'
-	print '     | read            | Reads a message from the inbox or outbox     |'
-	print '     | save            | Saves message to text file                   |'
-	print '     | delete          | Deletes a message or all messages            |'
-	print '     ------------------------------------------------------------------'
-	print ' '
-	main()
-        
+        print '     -------------------------------------------------------------------------'
+        print '     |        https://github.com/Dokument/PyBitmessage-Daemon                |'
+        print '     |-----------------------------------------------------------------------|'
+        print '     | Command                | Description                                  |'
+        print '     |------------------------|----------------------------------------------|'
+        print '     | help                   | This help file.                              |'
+        print '     | apiTest                | Tests the API                                |'
+        print '     | bmSettings             | BitMessage settings                          |'
+        print '     | exit                   | Use anytime to return to main menu           |'
+        print '     | quit                   | Quits the program                            |'
+        print '     |------------------------|----------------------------------------------|'
+        print '     | listAddresses          | Lists all of the users addresses             |'
+        print '     | generateAddress        | Generates a new address                      |'
+        print '     | getAddress             | Get determinist address from passphrase      |'
+        print '     |------------------------|----------------------------------------------|'
+        print '     | listAddressBookEntries | Lists entries from the Address Book          |'
+        print '     | addAddressBookEntry    | Add address to the Address Book              |'
+        print '     | deleteAddressBookEntry | Deletes address from the Address Book        |'
+        print '     |------------------------|----------------------------------------------|'
+        print '     | subscribe              | Subscribes to an address                     |'
+        print '     | unsubscribe            | Unsubscribes from an address                 |'
+       #print '     | listSubscriptions      | Lists all of the subscriptions.              |'
+        print '     |------------------------|----------------------------------------------|'
+        print '     | inbox                  | Lists the message information for the inbox  |'
+        print '     | outbox                 | Lists the message information for the outbox |'
+        print '     | send                   | Send a new message or broadcast              |'
+        print '     | unread                 | Lists all unread inbox messages              |'
+        print '     | read                   | Reads a message from the inbox or outbox     |'
+        print '     | save                   | Saves message to text file                   |'
+        print '     | delete                 | Deletes a message or all messages            |'
+        print '     -------------------------------------------------------------------------'
+        print ' '
+        main()
+
     elif usrInput == "apitest": #tests the API Connection.
-	if (apiTest() == True):
+        if (apiTest() == True):
             print '\n     API connection test has: PASSED\n'
         else:
             print '\n     API connection test has: FAILED\n'
-                 
         main()
         
     elif usrInput == "bmsettings": #tests the API Connection.
@@ -1275,17 +1357,17 @@ def UI(usrInput): #Main user menu
             main()
         
     elif usrInput == "getaddress": #Gets the address for/from a passphrase
-
         phrase = userInput("Enter the address passphrase.")
         print '\n     Working...\n'
-	#vNumber = int(raw_input("Enter the address version number:"))
-	#sNumber = int(raw_input("Enter the address stream number:"))
+        #vNumber = int(raw_input("Enter the address version number:"))
+        #sNumber = int(raw_input("Enter the address stream number:"))
 
-	address = getAddress(phrase,3,1)#,vNumber,sNumber)
-	print ('\n     Address: ' + address + '\n')
+        address = getAddress(phrase,4,1)#,vNumber,sNumber)
+        print ('\n     Address: ' + address + '\n')
 
         usrPrompt = 1
         main()
+
     elif usrInput == "subscribe": #Subsribe to an address
         subscribe()
         usrPrompt = 1
@@ -1302,6 +1384,11 @@ def UI(usrInput): #Main user menu
     elif usrInput == "inbox":
         print '\n     Loading...\n'
         inbox()
+        main()
+
+    elif usrInput == "unread":
+        print '\n     Loading...\n'
+        inbox(True)
         main()
 
     elif usrInput == "outbox":
@@ -1335,7 +1422,13 @@ def UI(usrInput): #Main user menu
 
         if (uInput == 'i' or uInput == 'inbox'):
             print '\n     Loading...\n'
-            readMsg(msgNum)
+            messageID = readMsg(msgNum)
+
+            uInput = userInput("\nWould you like to keep this message unread, (Y)es or (N)o?").lower()
+
+            if not (uInput == 'y' or uInput == 'yes'):
+                markMessageRead(messageID)
+                usrPrompt = 1
 
             uInput = userInput("\nWould you like to (D)elete, (F)orward, (R)eply to, or (Exit) this message?").lower()
 
@@ -1499,11 +1592,16 @@ def UI(usrInput): #Main user menu
         else:
             print '\n     Invalid Entry.\n'
             userPrompt = 1
-
-	main()
+            main()
 
     elif usrInput == "exit":
         print '\n     You are already at the main menu. Use "quit" to quit.\n'
+        usrPrompt = 1
+        main()
+
+    elif usrInput == "listaddressbookentries":
+        res = listAddressBookEntries()
+        if res == 20: print '\n     Error: API function not supported.\n'
         usrPrompt = 1
         main()
 
@@ -1513,6 +1611,23 @@ def UI(usrInput): #Main user menu
         res = addAddressToAddressBook(address, label)
         if res == 16: print '\n     Error: Address already exists in Address Book.\n'
         if res == 20: print '\n     Error: API function not supported.\n'
+        usrPrompt = 1
+        main()
+
+    elif usrInput == "deleteaddressbookentry":
+        address = userInput('Enter address')
+        res = deleteAddressFromAddressBook(address)
+        if res == 20: print '\n     Error: API function not supported.\n'
+        usrPrompt = 1
+        main()
+
+    elif usrInput == "markallmessagesread":
+        markAllMessagesRead()
+        usrPrompt = 1
+        main()
+
+    elif usrInput == "markallmessagesunread":
+        markAllMessagesUnread()
         usrPrompt = 1
         main()
  
