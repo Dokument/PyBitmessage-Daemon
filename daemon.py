@@ -864,7 +864,7 @@ def sendBrd(fromAddress, subject, message): #sends a broadcast
         usrPrompt = 0
         main()
 
-def inbox(): #Lists the messages by: Message Number, To Address Label, From Address Label, Subject, Received Time)
+def inbox(unreadOnly = False): #Lists the messages by: Message Number, To Address Label, From Address Label, Subject, Received Time)
     global usrPrompt
     try:
         inboxMessages = json.loads(api.getAllInboxMessages())
@@ -874,26 +874,26 @@ def inbox(): #Lists the messages by: Message Number, To Address Label, From Addr
         usrPrompt = 0
         main()
 
+    messagesPrinted = 0
+    messagesUnread = 0
     for msgNum in range (0, numMessages): #processes all of the messages in the inbox
-        print '     -----------------------------------\n'
-        print '     Message Number:',msgNum #Message Number
-        print '     To:', getLabelForAddress(inboxMessages['inboxMessages'][msgNum]['toAddress']) #Get the to address
-        print '     From:', getLabelForAddress(inboxMessages['inboxMessages'][msgNum]['fromAddress']) #Get the from address
-        print '     Subject:', inboxMessages['inboxMessages'][msgNum]['subject'].decode('base64') #Get the subject
-        print '     Received:', datetime.datetime.fromtimestamp(float(inboxMessages['inboxMessages'][msgNum]['receivedTime'])).strftime('%Y-%m-%d %H:%M:%S')
-        
-        '''if (inboxMessages['inboxMessages'][msgNum]['read'] == 0):
-            print 'Unread'
-        else:
-            print 'Read'
-        print ' '
-        '''
-        
-        if (msgNum%20 == 0 and msgNum != 0):
+        message = inboxMessages['inboxMessages'][msgNum]
+        # if we are displaying all messages or if this message is unread then display it
+        if not unreadOnly or not message['read']:
+            print '     -----------------------------------\n'
+            print '     Message Number:',msgNum #Message Number
+            print '     To:', getLabelForAddress(message['toAddress']) #Get the to address
+            print '     From:', getLabelForAddress(message['fromAddress']) #Get the from address
+            print '     Subject:', message['subject'].decode('base64') #Get the subject
+            print '     Received:', datetime.datetime.fromtimestamp(float(message['receivedTime'])).strftime('%Y-%m-%d %H:%M:%S')
+            messagesPrinted += 1
+            if not message['read']: messagesUnread += 1
+
+        if (messagesPrinted%20 == 0 and messagesPrinted != 0):
             uInput = userInput('(Press Enter to continue or type (Exit) to return to the main menu.)').lower()
             
     print '\n     -----------------------------------'
-    print '     There are ',numMessages,' messages in the inbox.'
+    print '     There are %d unread messages of %d messages in the inbox.' % (messagesUnread, numMessages)
     print '     -----------------------------------\n'
 
 def outbox():
@@ -1028,7 +1028,6 @@ def readMsg(msgNum): #Opens a message for reading
             break
             
     #End attachment Detection
-            
     print '\n     To:', getLabelForAddress(inboxMessages['inboxMessages'][msgNum]['toAddress']) #Get the to address
     print '     From:', getLabelForAddress(inboxMessages['inboxMessages'][msgNum]['fromAddress']) #Get the from address
     print '     Subject:', inboxMessages['inboxMessages'][msgNum]['subject'].decode('base64') #Get the subject
@@ -1036,6 +1035,7 @@ def readMsg(msgNum): #Opens a message for reading
     print '     Message:\n'
     print message #inboxMessages['inboxMessages'][msgNum]['message'].decode('base64')
     print ' '
+    return inboxMessages['inboxMessages'][msgNum]['msgid']
 
 def replyMsg(msgNum,forwardORreply): #Allows you to reply to the message you are currently on. Saves typing in the addresses and subject.
     global usrPrompt
@@ -1209,6 +1209,49 @@ def getAPIErrorCode(response):
         # after the second space and removing the trailing colon
         return int(response.split()[2][:-1])
 
+def markMessageRead(messageID):
+    try:
+        response = api.getInboxMessageByID(messageID, True)
+        if "API Error" in response:
+            return getAPIErrorCode(response)
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+
+def markMessageUnread(messageID):
+    try:
+        response = api.getInboxMessageByID(messageID, False)
+        if "API Error" in response:
+            return getAPIErrorCode(response)
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+
+def markAllMessagesRead():
+    try:
+        inboxMessages = json.loads(api.getAllInboxMessages())['inboxMessages']
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+    for message in inboxMessages:
+        if not message['read']:
+            markMessageRead(message['msgid'])
+
+def markAllMessagesUnread():
+    try:
+        inboxMessages = json.loads(api.getAllInboxMessages())['inboxMessages']
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+    for message in inboxMessages:
+        if message['read']:
+            markMessageUnread(message['msgid'])
+
+
 def UI(usrInput): #Main user menu
     global usrPrompt
     
@@ -1240,7 +1283,7 @@ def UI(usrInput): #Main user menu
         print '     | inbox                  | Lists the message information for the inbox  |'
         print '     | outbox                 | Lists the message information for the outbox |'
         print '     | send                   | Send a new message or broadcast              |'
-       #print '     | unread                 | Lists all unread inbox messages              |'
+        print '     | unread                 | Lists all unread inbox messages              |'
         print '     | read                   | Reads a message from the inbox or outbox     |'
         print '     | save                   | Saves message to text file                   |'
         print '     | delete                 | Deletes a message or all messages            |'
@@ -1343,6 +1386,11 @@ def UI(usrInput): #Main user menu
         inbox()
         main()
 
+    elif usrInput == "unread":
+        print '\n     Loading...\n'
+        inbox(True)
+        main()
+
     elif usrInput == "outbox":
         print '\n     Loading...\n'
         outbox()
@@ -1374,7 +1422,13 @@ def UI(usrInput): #Main user menu
 
         if (uInput == 'i' or uInput == 'inbox'):
             print '\n     Loading...\n'
-            readMsg(msgNum)
+            messageID = readMsg(msgNum)
+
+            uInput = userInput("\nWould you like to keep this message unread, (Y)es or (N)o?").lower()
+
+            if not (uInput == 'y' or uInput == 'yes'):
+                markMessageRead(messageID)
+                usrPrompt = 1
 
             uInput = userInput("\nWould you like to (D)elete, (F)orward, (R)eply to, or (Exit) this message?").lower()
 
@@ -1564,6 +1618,16 @@ def UI(usrInput): #Main user menu
         address = userInput('Enter address')
         res = deleteAddressFromAddressBook(address)
         if res == 20: print '\n     Error: API function not supported.\n'
+        usrPrompt = 1
+        main()
+
+    elif usrInput == "markallmessagesread":
+        markAllMessagesRead()
+        usrPrompt = 1
+        main()
+
+    elif usrInput == "markallmessagesunread":
+        markAllMessagesUnread()
         usrPrompt = 1
         main()
  
