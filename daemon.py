@@ -2,7 +2,7 @@
 # Created by Adam Melton (.dok) referenceing https://bitmessage.org/wiki/API_Reference for API documentation
 # Distributed under the MIT/X11 software license. See http://www.opensource.org/licenses/mit-license.php.
 
-# This is an example of a daemon client for PyBitmessage 0.3.5, by .dok (Version 0.2.7)
+# This is an example of a daemon client for PyBitmessage 0.4.2, by .dok (Version 0.3.0)
 
 
 import ConfigParser
@@ -388,73 +388,15 @@ def bmSettings(): #Allows the viewing and modification of keys.dat settings.
         print "Invalid input."
         usrPrompt = 1
         main()
-    
-#Begin BM address verifiication
-###############################################################################################################
 
-ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-
-def decodeBase58(string, alphabet=ALPHABET): #Taken from addresses.py
-    """Decode a Base X encoded string into the number
-
-    Arguments:
-    - `string`: The encoded string
-    - `alphabet`: The alphabet to use for encoding
-    """
-    base = len(alphabet)
-    strlen = len(string)
-    num = 0
-
-    try:
-        power = strlen - 1
-        for char in string:
-            num += alphabet.index(char) * (base ** power)
-            power -= 1
-    except:
-        #character not found (like a space character or a 0)
-        return 0
-    return num
-
-def decodeAddress(address):
-    #returns true if valid, false if not a valid address. - taken from addresses.py
-
-    address = str(address).strip()
-
-    if address[:3] == 'BM-':
-        integer = decodeBase58(address[3:])
-    else:
-        integer = decodeBase58(address)
+def validAddress(address):
+    address_information = api.decodeAddress(address)
+    address_information = eval(address_information)
         
-    if integer == 0:
-        #print 'invalidcharacters' Removed because it appears in regular sendMessage
+    if 'success' in str(address_information.get('status')).lower():
+        return True
+    else:
         return False
-    #after converting to hex, the string will be prepended with a 0x and appended with a L
-    hexdata = hex(integer)[2:-1]
-
-    if len(hexdata) % 2 != 0:
-        hexdata = '0' + hexdata
-
-    #print 'hexdata', hexdata
-
-    data = hexdata.decode('hex')
-    checksum = data[-4:]
-
-    sha = hashlib.new('sha512')
-    sha.update(data[:-4])
-    currentHash = sha.digest()
-    #print 'sha after first hashing: ', sha.hexdigest()
-    sha = hashlib.new('sha512')
-    sha.update(currentHash)
-    #print 'sha after second hashing: ', sha.hexdigest()
-
-    if checksum != sha.digest()[0:4]:
-        print '\n     Checksum Failed\n'
-        return False
-
-    return True
-
-###############################################################################################################
-#End BM address verifiication
 
 def getAddress(passphrase,vNumber,sNumber):
     passphrase = passphrase.encode('base64')#passphrase must be encoded
@@ -471,7 +413,7 @@ def subscribe():
                 usrPrompt = 1
                 print ' '
                 main()
-        elif (decodeAddress(address)== False):
+        elif (validAddress(address)== False):
             print '\n     Invalid. "c" to cancel. Please try again.\n'
         else:
             break
@@ -492,7 +434,7 @@ def unsubscribe():
                 usrPrompt = 1
                 print ' '
                 main()
-        elif (decodeAddress(address)== False):
+        elif (validAddress(address)== False):
             print '\n     Invalid. "c" to cancel. Please try again.\n'
         else:
             break
@@ -523,6 +465,62 @@ def listSubscriptions():
         print label, address, enabled
     '''
     print ' '
+
+def createChan():
+    global usrPrompt
+    password = userInput("Enter channel name")
+    password = password.encode('base64')
+    try:
+        print api.createChan(password)
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+
+
+def joinChan():
+    global usrPrompt
+    while True:
+        address = userInput("Enter channel address")
+        
+        if (address == "c"):
+                usrPrompt = 1
+                print ' '
+                main()
+        elif (validAddress(address)== False):
+            print '\n     Invalid. "c" to cancel. Please try again.\n'
+        else:
+            break
+    
+    password = userInput("Enter channel name")
+    password = password.encode('base64')
+    try:
+        print api.joinChan(password,address)
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
+
+def leaveChan():
+    global usrPrompt
+    while True:
+        address = userInput("Enter channel address")
+        
+        if (address == "c"):
+                usrPrompt = 1
+                print ' '
+                main()
+        elif (validAddress(address)== False):
+            print '\n     Invalid. "c" to cancel. Please try again.\n'
+        else:
+            break
+    
+    try:
+        print api.leaveChan(address)
+    except:
+        print '\n     Connection Error\n'
+        usrPrompt = 0
+        main()
 
 
 def listAdd(): #Lists all of the addresses and their info
@@ -701,7 +699,7 @@ Encoding:base64
 
 def sendMsg(toAddress, fromAddress, subject, message): #With no arguments sent, sendMsg fills in the blanks. subject and message must be encoded before they are passed.
     global usrPrompt
-    if (decodeAddress(toAddress)== False):
+    if (validAddress(toAddress)== False):
         while True:
             toAddress = userInput("What is the To Address?")
 
@@ -709,13 +707,13 @@ def sendMsg(toAddress, fromAddress, subject, message): #With no arguments sent, 
                 usrPrompt = 1
                 print ' '
                 main()
-            elif (decodeAddress(toAddress)== False):
+            elif (validAddress(toAddress)== False):
                 print '\n     Invalid Address. "c" to cancel. Please try again.\n'
             else:
                 break
         
         
-    if (decodeAddress(fromAddress)== False):
+    if (validAddress(fromAddress)== False):
         try:            
             jsonAddresses = json.loads(api.listAddresses())
             numAddresses = len(jsonAddresses['addresses']) #Number of addresses
@@ -745,7 +743,7 @@ def sendMsg(toAddress, fromAddress, subject, message): #With no arguments sent, 
                         break
                 
                 if (found == False):
-                    if(decodeAddress(fromAddress)== False):
+                    if(validAddress(fromAddress)== False):
                         print '\n     Invalid Address. Please try again.\n'
                     
                     else:
@@ -821,7 +819,7 @@ def sendBrd(fromAddress, subject, message): #sends a broadcast
                         break
                 
                 if (found == False):
-                    if(decodeAddress(fromAddress)== False):
+                    if(validAddress(fromAddress)== False):
                         print '\n     Invalid Address. Please try again.\n'
                     
                     else:
@@ -1067,7 +1065,7 @@ def replyMsg(msgNum,forwardORreply): #Allows you to reply to the message you are
                 usrPrompt = 1
                 print ' '
                 main()
-            elif (decodeAddress(toAdd)== False):
+            elif (validAddress(toAdd)== False):
                 print '\n     Invalid Address. "c" to cancel. Please try again.\n'
             else:
                 break
@@ -1264,6 +1262,7 @@ def UI(usrInput): #Main user menu
         print '     |------------------------|----------------------------------------------|'
         print '     | help                   | This help file.                              |'
         print '     | apiTest                | Tests the API                                |'
+        print '     | addInfo                | Returns address information (If valid)       |'        
         print '     | bmSettings             | BitMessage settings                          |'
         print '     | exit                   | Use anytime to return to main menu           |'
         print '     | quit                   | Quits the program                            |'
@@ -1280,6 +1279,10 @@ def UI(usrInput): #Main user menu
         print '     | unsubscribe            | Unsubscribes from an address                 |'
        #print '     | listSubscriptions      | Lists all of the subscriptions.              |'
         print '     |------------------------|----------------------------------------------|'
+	print '     | create                 | Creates a channel                            |'
+        print '     | join                   | Joins a channel                              |'
+        print '     | leave                  | Leaves a channel                             |'
+	print '     |------------------------|----------------------------------------------|'
         print '     | inbox                  | Lists the message information for the inbox  |'
         print '     | outbox                 | Lists the message information for the outbox |'
         print '     | send                   | Send a new message or broadcast              |'
@@ -1296,6 +1299,23 @@ def UI(usrInput): #Main user menu
             print '\n     API connection test has: PASSED\n'
         else:
             print '\n     API connection test has: FAILED\n'
+        main()
+
+    elif usrInput == "addinfo":
+        tmp_address = userInput('\nEnter the Bitmessage Address.')
+        address_information = api.decodeAddress(tmp_address)
+        address_information = eval(address_information)
+
+        print '\n------------------------------'
+        
+        if 'success' in str(address_information.get('status')).lower():
+            print ' Valid Address'            
+            print ' Address Version: %s' % str(address_information.get('addressVersion'))
+            print ' Stream Number: %s' % str(address_information.get('streamNumber'))
+        else:
+            print ' Invalid Address !'
+
+        print '------------------------------\n'
         main()
         
     elif usrInput == "bmsettings": #tests the API Connection.
@@ -1379,6 +1399,21 @@ def UI(usrInput): #Main user menu
     elif usrInput == "listsubscriptions": #Unsubscribe from an address
         listSubscriptions()
         usrPrompt = 1
+        main()
+
+    elif usrInput == "create":
+        createChan()
+        userPrompt = 1
+        main()
+
+    elif usrInput == "join":
+        joinChan()
+        userPrompt = 1
+        main()
+        
+    elif usrInput == "leave":
+        leaveChan()
+        userPrompt = 1
         main()
         
     elif usrInput == "inbox":
